@@ -39,13 +39,25 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const template = await prisma.template.findUnique({ where: { id: params?.id } })
     if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+    
+    // Delete .ai file
     if (template?.filePath) {
       try {
         await deleteFile(template.filePath)
       } catch (err) {
-        console.error('Failed to delete file from S3:', err)
+        console.error('Failed to delete AI file from S3:', err)
       }
     }
+    
+    // Delete SVG file if exists
+    if (template?.svgPath) {
+      try {
+        await deleteFile(template.svgPath)
+      } catch (err) {
+        console.error('Failed to delete SVG file from S3:', err)
+      }
+    }
+    
     await prisma.template.delete({ where: { id: params?.id } })
     return NextResponse.json({ message: 'Template deleted' })
   } catch (error) {

@@ -11,9 +11,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { FileUpload } from '@/components/file-upload'
-import { Plus, FileImage, Trash2, Edit, Download } from 'lucide-react'
+import { Plus, FileImage, Trash2, Edit, Download, Layers } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 interface Template {
   id: string
@@ -21,6 +22,9 @@ interface Template {
   category: string
   filePath: string
   fileIsPublic: boolean
+  svgPath?: string | null
+  svgIsPublic?: boolean
+  layerData?: string | null
   description: string | null
   _count: { items: number }
 }
@@ -31,9 +35,20 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
-  const [formData, setFormData] = useState({ name: '', category: 't-shirts', filePath: '', fileIsPublic: false, description: '' })
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    category: 't-shirts', 
+    filePath: '', 
+    fileIsPublic: false, 
+    svgPath: '', 
+    svgIsPublic: false, 
+    layerData: '', 
+    description: '' 
+  })
   const [loading, setLoading] = useState(false)
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({})
+  const [svgPreviews, setSvgPreviews] = useState<Record<string, string>>({})
+  const [parsingSvg, setParsingSvg] = useState(false)
 
   const fetchFileUrl = async (template: Template) => {
     if (!template?.filePath || fileUrls[template.id]) return
@@ -52,11 +67,69 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
     }
   }
 
+  const fetchSvgPreview = async (template: Template) => {
+    if (!template?.svgPath || svgPreviews[template.id]) return
+    try {
+      const response = await fetch('/api/upload/file-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cloud_storage_path: template.svgPath, isPublic: template.svgIsPublic ?? false }),
+      })
+      if (response.ok) {
+        const { url } = await response.json()
+        // Fetch the SVG content
+        const svgResponse = await fetch(url)
+        const svgContent = await svgResponse.text()
+        setSvgPreviews((prev) => ({ ...prev, [template.id]: svgContent }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch SVG preview:', error)
+    }
+  }
+
   useEffect(() => {
     templates.forEach((template) => {
       if (template?.filePath) fetchFileUrl(template)
+      if (template?.svgPath) fetchSvgPreview(template)
     })
   }, [templates])
+
+  const handleSvgUpload = async (cloud_storage_path: string, isPublic: boolean) => {
+    setParsingSvg(true)
+    try {
+      // Fetch the SVG content
+      const urlResponse = await fetch('/api/upload/file-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cloud_storage_path, isPublic }),
+      })
+      const { url } = await urlResponse.json()
+      
+      const svgResponse = await fetch(url)
+      const svgContent = await svgResponse.text()
+      
+      // Parse the SVG to extract layers
+      const parseResponse = await fetch('/api/templates/parse-svg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ svgContent }),
+      })
+      
+      if (parseResponse.ok) {
+        const { parsed } = await parseResponse.json()
+        setFormData(prev => ({ 
+          ...prev, 
+          svgPath: cloud_storage_path, 
+          svgIsPublic: isPublic,
+          layerData: JSON.stringify(parsed)
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to parse SVG:', error)
+    } finally {
+      setParsingSvg(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,7 +145,7 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
       if (response.ok) {
         setOpen(false)
         setEditingTemplate(null)
-        setFormData({ name: '', category: 't-shirts', filePath: '', fileIsPublic: false, description: '' })
+        setFormData({ name: '', category: 't-shirts', filePath: '', fileIsPublic: false, svgPath: '', svgIsPublic: false, layerData: '', description: '' })
         router.refresh()
       }
     } catch (error) {
@@ -94,7 +167,16 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
 
   const handleEdit = (template: Template) => {
     setEditingTemplate(template)
-    setFormData({ name: template.name, category: template.category, filePath: template.filePath, fileIsPublic: template.fileIsPublic, description: template.description ?? '' })
+    setFormData({ 
+      name: template.name, 
+      category: template.category, 
+      filePath: template.filePath, 
+      fileIsPublic: template.fileIsPublic, 
+      svgPath: template.svgPath ?? '',
+      svgIsPublic: template.svgIsPublic ?? false,
+      layerData: template.layerData ?? '',
+      description: template.description ?? '' 
+    })
     setOpen(true)
   }
 
@@ -107,6 +189,16 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
     link.click()
   }
 
+  const getLayerCount = (template: Template): number => {
+    if (!template.layerData) return 0
+    try {
+      const parsed = JSON.parse(template.layerData)
+      return parsed?.layers?.length || 0
+    } catch {
+      return 0
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
       <NavBar />
@@ -114,10 +206,13 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Templates</h1>
-            <p className="text-lg text-gray-600">Manage .ai template files</p>
+            <p className="text-lg text-gray-600">Manage .ai template files with SVG previews</p>
           </div>
           <Dialog open={open} onOpenChange={(open) => {
-            if (!open) { setEditingTemplate(null); setFormData({ name: '', category: 't-shirts', filePath: '', fileIsPublic: false, description: '' }) }
+            if (!open) { 
+              setEditingTemplate(null)
+              setFormData({ name: '', category: 't-shirts', filePath: '', fileIsPublic: false, svgPath: '', svgIsPublic: false, layerData: '', description: '' }) 
+            }
             setOpen(open)
           }}>
             <DialogTrigger asChild>
@@ -126,19 +221,56 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingTemplate ? 'Edit Template' : 'Add New Template'}</DialogTitle>
-                <DialogDescription>{editingTemplate ? 'Update template information' : 'Upload a new .ai template file'}</DialogDescription>
+                <DialogDescription>{editingTemplate ? 'Update template information' : 'Upload a new .ai template file with optional SVG preview'}</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit}>
                 <div className="space-y-4 py-4">
-                  <div><Label>Template Name *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Basic T-Shirt Design" required /></div>
-                  <div><Label>Category *</Label>
+                  <div>
+                    <Label>Template Name *</Label>
+                    <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Basic T-Shirt Design" required />
+                  </div>
+                  <div>
+                    <Label>Category *</Label>
                     <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })} required>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{categories.map((cat) => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
-                  <div><Label>Description</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} /></div>
-                  <FileUpload label=".AI Template File" accept=".ai,application/postscript,application/illustrator" isPublic={false} maxSize={500} onUploadComplete={(cloud_storage_path, isPublic) => setFormData({ ...formData, filePath: cloud_storage_path, fileIsPublic: isPublic })} />
+                  <div>
+                    <Label>Description</Label>
+                    <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} placeholder="Describe this template..." />
+                  </div>
+                  <div className="border-t pt-4">
+                    <Label className="text-lg font-semibold">Files</Label>
+                    <p className="text-sm text-gray-500 mb-4">Upload the master .ai file (required) and an SVG file (optional) for layer preview</p>
+                    
+                    <FileUpload 
+                      label=".AI Template File (Required)" 
+                      accept=".ai,application/postscript,application/illustrator" 
+                      isPublic={false} 
+                      maxSize={500} 
+                      onUploadComplete={(cloud_storage_path, isPublic) => setFormData({ ...formData, filePath: cloud_storage_path, fileIsPublic: isPublic })} 
+                    />
+                    
+                    <div className="mt-4">
+                      <FileUpload 
+                        label="SVG Preview File (Optional - for layer editing)" 
+                        accept=".svg,image/svg+xml" 
+                        isPublic={false} 
+                        maxSize={50} 
+                        onUploadComplete={handleSvgUpload} 
+                      />
+                      {parsingSvg && <p className="text-sm text-blue-600 mt-2">⏳ Parsing SVG layers...</p>}
+                      {formData.layerData && (
+                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                          <p className="text-sm text-green-700 flex items-center">
+                            <Layers className="w-4 h-4 mr-2" />
+                            SVG uploaded and {JSON.parse(formData.layerData)?.layers?.length || 0} layers detected
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -149,24 +281,55 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
           </Dialog>
         </div>
         {templates.length === 0 ? (
-          <Card className="text-center py-12"><CardContent><FileImage className="w-16 h-16 mx-auto text-gray-400 mb-4" /><h3 className="text-xl font-semibold mb-2">No templates yet</h3><p className="text-gray-600 mb-4">Upload your first .ai template</p><Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Add Template</Button></CardContent></Card>
+          <Card className="text-center py-12">
+            <CardContent>
+              <FileImage className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No templates yet</h3>
+              <p className="text-gray-600 mb-4">Upload your first .ai template with an SVG preview</p>
+              <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Add Template</Button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates.map((template, index) => (
               <motion.div key={template.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                 <Card className="hover:shadow-lg transition-shadow h-full">
+                  {svgPreviews[template.id] && (
+                    <div className="relative w-full aspect-video bg-gray-100 border-b">
+                      <div 
+                        className="w-full h-full p-4" 
+                        dangerouslySetInnerHTML={{ __html: svgPreviews[template.id] }}
+                        style={{ overflow: 'hidden' }}
+                      />
+                    </div>
+                  )}
                   <CardHeader>
-                    <CardTitle className="flex items-start justify-between"><span className="flex-1">{template.name}</span><Badge variant="secondary">{template._count?.items ?? 0}</Badge></CardTitle>
+                    <CardTitle className="flex items-start justify-between">
+                      <span className="flex-1">{template.name}</span>
+                      <Badge variant="secondary">{template._count?.items ?? 0}</Badge>
+                    </CardTitle>
                     <CardDescription>
                       <Badge className="mb-2">{template.category}</Badge>
+                      {template?.svgPath && (
+                        <Badge variant="outline" className="ml-2 mb-2">
+                          <Layers className="w-3 h-3 mr-1" />
+                          {getLayerCount(template)} layers
+                        </Badge>
+                      )}
                       {template?.description && <p className="text-sm mt-2">{template.description}</p>}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(template)}><Edit className="w-4 h-4 mr-2" />Edit</Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDownload(template)}><Download className="w-4 h-4" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(template.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(template)}>
+                        <Edit className="w-4 h-4 mr-2" />Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDownload(template)}>
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(template.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

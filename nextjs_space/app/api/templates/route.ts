@@ -23,12 +23,21 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { name, category, filePath, fileIsPublic, description } = await request.json()
+    const { name, category, filePath, fileIsPublic, svgPath, svgIsPublic, layerData, description } = await request.json()
     if (!name || !category || !filePath) {
       return NextResponse.json({ error: 'Name, category, and filePath required' }, { status: 400 })
     }
     const template = await prisma.template.create({
-      data: { name, category, filePath, fileIsPublic: fileIsPublic ?? false, description: description ?? null },
+      data: { 
+        name, 
+        category, 
+        filePath, 
+        fileIsPublic: fileIsPublic ?? false, 
+        svgPath: svgPath ?? null,
+        svgIsPublic: svgIsPublic ?? false,
+        layerData: layerData ?? null,
+        description: description ?? null 
+      },
     })
     return NextResponse.json(template, { status: 201 })
   } catch (error) {

@@ -306,12 +306,20 @@ export function ItemsClient({ items, projects, templates }: { items: Item[]; pro
                         <span>{item._count?.generatedFiles ?? 0} files</span>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => openDesignDialog(item)}>
-                        <Sparkles className="w-4 h-4 mr-2" />Design
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(item)}><Edit className="w-4 h-4" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                    <div className="flex flex-col space-y-2">
+                      <Link href={`/items/${item.id}`}>
+                        <Button variant="default" size="sm" className="w-full">
+                          <Palette className="w-4 h-4 mr-2" />
+                          Visual Editor
+                        </Button>
+                      </Link>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => openDesignDialog(item)}>
+                          <Sparkles className="w-4 h-4 mr-2" />Text
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(item)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

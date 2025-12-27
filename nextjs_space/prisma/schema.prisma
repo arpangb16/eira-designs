@@ -112,15 +112,18 @@ model Item {
 }
 
 model Template {
-  id          String   @id @default(cuid())
-  name        String
-  category    String
-  filePath    String
-  fileIsPublic Boolean @default(false)
-  description String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  items       Item[]
+  id           String   @id @default(cuid())
+  name         String
+  category     String
+  filePath     String
+  fileIsPublic Boolean  @default(false)
+  svgPath      String?
+  svgIsPublic  Boolean  @default(false)
+  layerData    String?  @db.Text
+  description  String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  items        Item[]
 }
 
 model ManufacturerLogo {

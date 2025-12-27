@@ -35,7 +35,13 @@ try {
  * Process design instructions
  */
 function processInstructions(doc, instructions) {
-  // If instructions have placements array
+  // Handle structured layer changes from visual editor
+  if (instructions.changes) {
+    processLayerChanges(doc, instructions.changes);
+    return;
+  }
+  
+  // Handle legacy text-based instructions
   if (instructions.placements && instructions.placements.length > 0) {
     for (var i = 0; i < instructions.placements.length; i++) {
       var placement = instructions.placements[i];
@@ -51,6 +57,86 @@ function processInstructions(doc, instructions) {
   // If instructions have team data
   if (instructions.team) {
     applyTeamData(doc, instructions.team);
+  }
+}
+
+/**
+ * Process structured layer changes from visual editor
+ */
+function processLayerChanges(doc, changes) {
+  // changes is an object where keys are layer IDs and values are change objects
+  for (var layerId in changes) {
+    if (!changes.hasOwnProperty(layerId)) continue;
+    
+    var change = changes[layerId];
+    var layer = findLayer(doc, layerId);
+    
+    if (!layer) {
+      // Try to find by ID in all layers
+      layer = findLayerById(doc, layerId);
+    }
+    
+    if (!layer) continue;
+    
+    // Apply the change based on type
+    switch (change.type) {
+      case 'text':
+        updateTextInLayer(layer, change.value);
+        break;
+      case 'fill':
+        applyColorToLayers(doc, [layerId], change.value);
+        break;
+      case 'stroke':
+        applyStrokeColorToLayers(doc, [layerId], change.value);
+        break;
+      case 'visibility':
+        layer.visible = change.value;
+        break;
+      case 'image':
+        // Image replacement would need to be handled differently
+        // This is a placeholder for future enhancement
+        break;
+    }
+  }
+}
+
+/**
+ * Find layer by ID (searches all layers recursively)
+ */
+function findLayerById(doc, layerId) {
+  return findLayerByIdRecursive(doc.layers, layerId);
+}
+
+function findLayerByIdRecursive(layers, layerId) {
+  for (var i = 0; i < layers.length; i++) {
+    var layer = layers[i];
+    if (layer.name === layerId) {
+      return layer;
+    }
+    // Search in sublayers
+    if (layer.layers && layer.layers.length > 0) {
+      var found = findLayerByIdRecursive(layer.layers, layerId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Apply stroke color to layers
+ */
+function applyStrokeColorToLayers(doc, layerNames, hexColor) {
+  var rgbColor = hexToRGB(hexColor);
+  
+  for (var i = 0; i < layerNames.length; i++) {
+    var layer = findLayer(doc, layerNames[i]);
+    if (layer) {
+      for (var j = 0; j < layer.pathItems.length; j++) {
+        if (layer.pathItems[j].stroked) {
+          layer.pathItems[j].strokeColor = rgbColor;
+        }
+      }
+    }
   }
 }
 
