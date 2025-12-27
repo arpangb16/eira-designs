@@ -9,10 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Edit, FileImage, Download, Layers, FileType } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ArrowLeft, Edit, FileImage, Download, Layers, FileType, Wand2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { SVGEditor } from '@/components/svg-editor'
+import { SVGLayer, LayerChange } from '@/components/layer-inspector'
+import { toast } from 'sonner'
 
 interface Template {
   id: string
@@ -74,6 +78,8 @@ export function ItemDetailClient({
   const [loading, setLoading] = useState(false)
   const [aiFileUrl, setAiFileUrl] = useState<string | null>(null)
   const [svgPreview, setSvgPreview] = useState<string | null>(null)
+  const [svgLayers, setSvgLayers] = useState<SVGLayer[]>([])
+  const [savingChanges, setSavingChanges] = useState(false)
 
   useEffect(() => {
     // Fetch .ai file URL
@@ -118,6 +124,18 @@ export function ItemDetailClient({
         const svgResponse = await fetch(url)
         const svgContent = await svgResponse.text()
         setSvgPreview(svgContent)
+        
+        // Parse layers from template layerData
+        if (item.template?.layerData) {
+          try {
+            const parsed = JSON.parse(item.template.layerData)
+            if (parsed.layers) {
+              setSvgLayers(parsed.layers)
+            }
+          } catch (error) {
+            console.error('Failed to parse layer data:', error)
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to fetch SVG preview:', error)
@@ -151,6 +169,43 @@ export function ItemDetailClient({
     link.download = filename
     link.target = '_blank'
     link.click()
+  }
+
+  const handleSaveLayerChanges = async (changes: Record<string, LayerChange>) => {
+    setSavingChanges(true)
+    try {
+      // Convert changes to a JSON instruction
+      const instruction = JSON.stringify({
+        type: 'layer_modifications',
+        changes: Object.entries(changes).map(([layerId, change]) => ({
+          layerId,
+          changeType: change.type,
+          value: change.value
+        })),
+        timestamp: new Date().toISOString()
+      })
+
+      const response = await fetch('/api/design-instructions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: item.id,
+          instruction
+        }),
+      })
+
+      if (response.ok) {
+        toast.success('Changes saved successfully!')
+        router.refresh()
+      } else {
+        toast.error('Failed to save changes')
+      }
+    } catch (error) {
+      console.error('Failed to save layer changes:', error)
+      toast.error('Failed to save changes')
+    } finally {
+      setSavingChanges(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -290,116 +345,162 @@ export function ItemDetailClient({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Template Files */}
-          {item.template && (
-            <>
-              {/* SVG Preview */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center">
-                      <FileImage className="w-5 h-5 mr-2" />
-                      SVG Preview
-                    </span>
-                    {item.template.layerData && (
-                      <Badge variant="outline">
-                        <Layers className="w-3 h-3 mr-1" />
-                        {getLayerCount()} layers
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    Visual preview of the template design
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden border">
-                    {svgPreview ? (
-                      <div 
-                        className="w-full h-full p-4 flex items-center justify-center" 
-                        dangerouslySetInnerHTML={{ __html: svgPreview }}
-                        style={{ overflow: 'hidden' }}
-                      />
-                    ) : item.template.svgPath ? (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-center">
-                          <Layers className="w-12 h-12 mx-auto text-gray-400 mb-2 animate-pulse" />
-                          <p className="text-sm text-gray-500">Loading preview...</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-center">
-                          <FileImage className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-500">No SVG preview available</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Template Design Section */}
+        {item.template && (
+          <Tabs defaultValue="overview" className="mb-6">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="overview">
+                <FileImage className="w-4 h-4 mr-2" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="editor" disabled={!svgPreview || svgLayers.length === 0}>
+                <Wand2 className="w-4 h-4 mr-2" />
+                Visual Editor
+              </TabsTrigger>
+            </TabsList>
 
-              {/* AI File Info */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileType className="w-5 h-5 mr-2" />
-                    Master Template File
-                  </CardTitle>
-                  <CardDescription>
-                    Adobe Illustrator source file for high-quality output
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="p-4 bg-gray-50 rounded-lg border">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="font-medium text-gray-900">{item.template.name}.ai</p>
-                        <p className="text-sm text-gray-500">Category: {item.template.category}</p>
-                      </div>
-                      <Badge variant="secondary">.ai</Badge>
+            <TabsContent value="overview" className="mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* SVG Preview */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center">
+                        <FileImage className="w-5 h-5 mr-2" />
+                        SVG Preview
+                      </span>
+                      {item.template.layerData && (
+                        <Badge variant="outline">
+                          <Layers className="w-3 h-3 mr-1" />
+                          {getLayerCount()} layers
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Visual preview of the template design
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden border">
+                      {svgPreview ? (
+                        <div 
+                          className="w-full h-full p-4 flex items-center justify-center" 
+                          dangerouslySetInnerHTML={{ __html: svgPreview }}
+                          style={{ overflow: 'hidden' }}
+                        />
+                      ) : item.template.svgPath ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="text-center">
+                            <Layers className="w-12 h-12 mx-auto text-gray-400 mb-2 animate-pulse" />
+                            <p className="text-sm text-gray-500">Loading preview...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="text-center">
+                            <FileImage className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                            <p className="text-sm text-gray-500">No SVG preview available</p>
+                            <p className="text-xs text-gray-400 mt-1">Upload an SVG file to enable visual editing</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      className="w-full mt-3"
-                      onClick={() => handleDownload(aiFileUrl, `${item.template?.name}.ai`)}
-                      disabled={!aiFileUrl}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download .AI File
-                    </Button>
-                  </div>
-                  {item.template.svgPath && (
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm text-blue-800 font-medium mb-2">
-                        <Layers className="w-4 h-4 inline mr-1" />
-                        Layer Information Available
-                      </p>
-                      <p className="text-xs text-blue-600">
-                        This template has {getLayerCount()} editable layers that can be customized through the visual editor.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+                  </CardContent>
+                </Card>
 
-          {!item.template && (
-            <Card className="lg:col-span-2">
-              <CardContent className="text-center py-12">
-                <FileImage className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No template assigned</h3>
-                <p className="text-gray-600 mb-4">Assign a template to this item to view and edit the design files</p>
-                <Button onClick={() => setOpen(true)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Item
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                {/* AI File Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <FileType className="w-5 h-5 mr-2" />
+                      Master Template File
+                    </CardTitle>
+                    <CardDescription>
+                      Adobe Illustrator source file for high-quality output
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="font-medium text-gray-900">{item.template.name}.ai</p>
+                          <p className="text-sm text-gray-500">Category: {item.template.category}</p>
+                        </div>
+                        <Badge variant="secondary">.ai</Badge>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        className="w-full mt-3"
+                        onClick={() => handleDownload(aiFileUrl, `${item.template?.name}.ai`)}
+                        disabled={!aiFileUrl}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download .AI File
+                      </Button>
+                    </div>
+                    {item.template.svgPath && svgLayers.length > 0 && (
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-sm text-blue-800 font-medium mb-2">
+                          <Layers className="w-4 h-4 inline mr-1" />
+                          Layer Information Available
+                        </p>
+                        <p className="text-xs text-blue-600 mb-3">
+                          This template has {getLayerCount()} editable layers that can be customized.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="w-full bg-white"
+                          onClick={() => {
+                            const editorTab = document.querySelector('[value="editor"]') as HTMLElement
+                            editorTab?.click()
+                          }}
+                        >
+                          <Wand2 className="w-4 h-4 mr-2" />
+                          Open Visual Editor
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="editor" className="mt-6">
+              {svgPreview && svgLayers.length > 0 ? (
+                <SVGEditor
+                  svgContent={svgPreview}
+                  layers={svgLayers}
+                  onSave={handleSaveLayerChanges}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-12">
+                    <Layers className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No SVG layers available</h3>
+                    <p className="text-gray-600">
+                      Upload an SVG file with named layers to use the visual editor
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {!item.template && (
+          <Card className="mb-6">
+            <CardContent className="text-center py-12">
+              <FileImage className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No template assigned</h3>
+              <p className="text-gray-600 mb-4">Assign a template to this item to view and edit the design files</p>
+              <Button onClick={() => setOpen(true)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Item
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Design Instructions and Generated Files */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
