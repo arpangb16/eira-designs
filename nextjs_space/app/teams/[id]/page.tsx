@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth-options'
 import { TeamDetailClient } from './_components/team-detail-client'
-import prisma from '@/lib/db'
+import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +45,7 @@ export default async function TeamDetailPage({
       createdAt: team.school.createdAt.toISOString(),
       updatedAt: team.school.updatedAt.toISOString(),
     },
-    projects: team.projects.map(project => ({
+    projects: team.projects.map((project: any) => ({
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
