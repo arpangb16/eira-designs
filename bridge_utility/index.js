@@ -13,6 +13,20 @@ const { exec } = require('child_process');
 const FormData = require('form-data');
 const config = require('./config.json');
 
+// Check if .env file exists
+const envPath = path.join(__dirname, '.env');
+if (!fs.existsSync(envPath)) {
+  console.error('❌ ERROR: .env file not found!');
+  console.error('');
+  console.error('Please create a .env file in the bridge_utility directory.');
+  console.error('You can copy .env.example as a starting point:');
+  console.error('');
+  console.error('  cp .env.example .env');
+  console.error('');
+  console.error('Then edit .env with your configuration.');
+  process.exit(1);
+}
+
 // Configuration
 const WEB_APP_URL = process.env.WEB_APP_URL || 'http://localhost:3000';
 const USER_EMAIL = process.env.USER_EMAIL;
@@ -20,6 +34,17 @@ const USER_PASSWORD = process.env.USER_PASSWORD;
 const TEMP_DIR = path.resolve(process.env.TEMP_DIR || './temp');
 const OUTPUT_DIR = path.resolve(process.env.OUTPUT_DIR || './output');
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || '5000');
+
+// Validate required environment variables
+if (!USER_EMAIL || !USER_PASSWORD) {
+  console.error('❌ ERROR: Missing required environment variables!');
+  console.error('');
+  console.error('Please make sure your .env file contains:');
+  console.error('  USER_EMAIL=your-email@example.com');
+  console.error('  USER_PASSWORD=your-password');
+  console.error('');
+  process.exit(1);
+}
 
 let authToken = null;
 let isProcessing = false;
@@ -30,6 +55,7 @@ fs.ensureDirSync(OUTPUT_DIR);
 
 console.log('🎨 Apparel Design Bridge Utility Starting...');
 console.log('📍 Web App URL:', WEB_APP_URL);
+console.log('👤 User Email:', USER_EMAIL);
 console.log('📂 Temp Directory:', TEMP_DIR);
 console.log('📁 Output Directory:', OUTPUT_DIR);
 console.log('');

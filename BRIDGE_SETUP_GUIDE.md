@@ -27,7 +27,14 @@ npm install axios dotenv form-data fs-extra
 
 ### 3. Configure Environment
 
-Create a `.env` file in the bridge_utility folder:
+**IMPORTANT:** You must create a `.env` file from the example template.
+
+```bash
+cd /path/to/bridge_utility
+cp .env.example .env
+```
+
+Then edit the `.env` file with your configuration:
 
 ```env
 # Your web app URL
@@ -45,6 +52,8 @@ TEMP_DIR=./temp
 OUTPUT_DIR=./output
 POLL_INTERVAL=5000
 ```
+
+**Note:** On Windows, use a text editor like Notepad to create and edit the `.env` file. On macOS/Linux, you can use `nano .env` or any text editor.
 
 **Finding your Illustrator path:**
 
@@ -135,15 +144,48 @@ You can install the bridge on multiple computers:
 
 ## ⚠️ Troubleshooting
 
+### Bridge connects to localhost instead of deployed URL
+**Problem:** Bridge tries to connect to `http://localhost:3000` instead of your web app URL.
+
+**Solution:**
+1. Make sure you created a `.env` file (not just `.env.example`):
+   ```bash
+   cp .env.example .env
+   ```
+2. Edit the `.env` file and set `WEB_APP_URL`:
+   ```env
+   WEB_APP_URL=https://eira-designs.abacusai.app
+   ```
+3. Make sure there are no spaces around the `=` sign
+4. Save the file and restart the bridge: `node index.js`
+
+### ".env file not found" error
+**Problem:** Bridge says ".env file not found!"
+
+**Solution:**
+1. You're either in the wrong directory, or haven't created the `.env` file
+2. Make sure you're in the `bridge_utility` directory:
+   ```bash
+   cd /path/to/bridge_utility
+   ls -la
+   ```
+3. You should see `.env.example` - copy it to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+4. Edit `.env` with your settings
+
 ### Bridge won't authenticate
-- Check `WEB_APP_URL` is correct
+- Check `WEB_APP_URL` is correct in `.env`
 - Verify email/password match your web app account
 - Try logging in to web app manually first
+- Make sure `.env` file exists and is being read (bridge will show "User Email: your-email" on startup)
 
 ### Illustrator not found
 - Double-check `ILLUSTRATOR_PATH` in `.env`
 - Make sure Illustrator is installed and licensed
 - Try opening Illustrator manually to verify it works
+- Uncomment the appropriate path for your OS in `.env`
 
 ### Script doesn't run
 **Windows:** Run Command Prompt as Administrator
@@ -155,7 +197,7 @@ You can install the bridge on multiple computers:
 ### No jobs found
 - Make sure design instruction status is "pending"
 - Check that polling is enabled in `config.json`
-- Verify bridge authenticated successfully
+- Verify bridge authenticated successfully (look for "✅ Authentication successful")
 
 ## 📚 Full Documentation
 

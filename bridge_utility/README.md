@@ -61,9 +61,17 @@ This desktop application runs on your local machine and automates Adobe Illustra
 
 ### Step 3: Configure Environment Variables
 
+**CRITICAL:** You MUST create a `.env` file. The bridge will not work without it.
+
 1. Copy the example environment file:
    ```bash
+   cd /path/to/bridge_utility
    cp .env.example .env
+   ```
+   
+   **Windows users:** Use Command Prompt or PowerShell:
+   ```cmd
+   copy .env.example .env
    ```
 
 2. Edit the `.env` file with your settings:
@@ -194,6 +202,56 @@ When a design job is found:
 
 ## 🔧 Troubleshooting
 
+### Bridge Connects to Localhost Instead of Deployed URL
+
+**Problem:** Bridge tries to connect to `http://localhost:3000` instead of your deployed web app.
+
+**Root Cause:** The `.env` file doesn't exist or isn't being read.
+
+**Solutions:**
+1. **Check if `.env` exists:**
+   ```bash
+   cd /path/to/bridge_utility
+   ls -la | grep .env
+   ```
+   You should see both `.env.example` AND `.env`
+
+2. **If `.env` is missing, create it:**
+   ```bash
+   cp .env.example .env
+   ```
+   
+3. **Edit `.env` and set the correct URL:**
+   ```env
+   WEB_APP_URL=https://eira-designs.abacusai.app
+   ```
+   
+4. **Make sure there are no spaces around `=`**
+   - ✅ Correct: `WEB_APP_URL=https://eira-designs.abacusai.app`
+   - ❌ Wrong: `WEB_APP_URL = https://eira-designs.abacusai.app`
+
+5. **Restart the bridge:**
+   ```bash
+   node index.js
+   ```
+
+6. **Verify the bridge is reading the file:**
+   When the bridge starts, you should see:
+   ```
+   📍 Web App URL: https://eira-designs.abacusai.app
+   👤 User Email: john@doe.com
+   ```
+   If you see `http://localhost:3000`, the `.env` file isn't being read.
+
+### ".env file not found" Error
+
+**Problem:** Bridge displays "❌ ERROR: .env file not found!"
+
+**Solutions:**
+- You haven't created the `.env` file yet
+- Run `cp .env.example .env` in the bridge_utility directory
+- Make sure you're in the correct directory when running the bridge
+
 ### Authentication Fails
 
 **Problem:** "❌ Authentication error: 401 Unauthorized"
@@ -201,7 +259,7 @@ When a design job is found:
 **Solutions:**
 - Verify your email and password in `.env` are correct
 - Make sure you can log in to the web app with these credentials
-- Check that `WEB_APP_URL` is correct
+- Check that `WEB_APP_URL` is correct (should be the deployed URL, not localhost)
 
 ### Illustrator Not Found
 
