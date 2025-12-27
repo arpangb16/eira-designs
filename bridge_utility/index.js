@@ -61,40 +61,26 @@ console.log('📁 Output Directory:', OUTPUT_DIR);
 console.log('');
 
 /**
- * Authenticate with the web application
+ * Test connectivity to the web application
  */
-async function authenticate() {
+async function testConnectivity() {
   try {
-    console.log('🔐 Authenticating with web app...');
-    
-    const response = await axios.post(`${WEB_APP_URL}/api/auth/callback/credentials`, {
-      email: USER_EMAIL,
-      password: USER_PASSWORD,
-      json: true
+    console.log('🔗 Testing connection to web app...');
+    const response = await axios.get(`${WEB_APP_URL}/api/auth/session`, {
+      timeout: 10000
     });
-
-    if (response.data && response.data.url) {
-      console.log('✅ Authentication successful');
-      return true;
-    }
-
-    // Alternative: Use NextAuth session endpoint
-    const sessionResponse = await axios.get(`${WEB_APP_URL}/api/auth/session`, {
-      headers: {
-        'Cookie': response.headers['set-cookie'] ? response.headers['set-cookie'].join('; ') : ''
-      }
-    });
-
-    if (sessionResponse.data && sessionResponse.data.user) {
-      authToken = response.headers['set-cookie'] ? response.headers['set-cookie'].join('; ') : null;
-      console.log('✅ Authentication successful');
-      console.log('👤 User:', sessionResponse.data.user.email);
-      return true;
-    }
-
-    throw new Error('Authentication failed');
+    console.log('✅ Web app is reachable');
+    return true;
   } catch (error) {
-    console.error('❌ Authentication error:', error.message);
+    if (error.code === 'ECONNREFUSED') {
+      console.error('❌ Cannot connect to web app');
+      console.error('   Make sure the web app is running at:', WEB_APP_URL);
+    } else if (error.code === 'ENOTFOUND') {
+      console.error('❌ Invalid web app URL');
+      console.error('   Check WEB_APP_URL in your .env file:', WEB_APP_URL);
+    } else {
+      console.error('❌ Connection error:', error.message);
+    }
     return false;
   }
 }
@@ -105,13 +91,17 @@ async function authenticate() {
 async function fetchPendingJobs() {
   try {
     const response = await axios.get(`${WEB_APP_URL}/api/design-instructions`, {
-      headers: authToken ? { 'Cookie': authToken } : {},
-      params: { status: 'pending' }
+      params: { status: 'pending' },
+      timeout: 10000
     });
 
     return response.data.instructions || [];
   } catch (error) {
-    console.error('❌ Error fetching jobs:', error.message);
+    if (error.response && error.response.status === 401) {
+      console.error('⚠️  Authentication issue - jobs may not be fetched correctly');
+    } else {
+      console.error('❌ Error fetching jobs:', error.message);
+    }
     return [];
   }
 }
@@ -125,14 +115,15 @@ async function downloadFile(cloudStoragePath, isPublic, destinationPath) {
     const urlResponse = await axios.post(
       `${WEB_APP_URL}/api/upload/file-url`,
       { cloud_storage_path: cloudStoragePath, isPublic },
-      { headers: authToken ? { 'Cookie': authToken } : {} }
+      { timeout: 10000 }
     );
 
     const fileUrl = urlResponse.data.url;
 
     // Download the file
     const fileResponse = await axios.get(fileUrl, {
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
+      timeout: 60000
     });
 
     await fs.writeFile(destinationPath, fileResponse.data);
@@ -158,12 +149,10 @@ async function uploadFile(filePath, itemId, designInstructionId, fileType) {
     form.append('fileType', fileType);
 
     await axios.post(`${WEB_APP_URL}/api/bridge/upload`, form, {
-      headers: {
-        ...form.getHeaders(),
-        ...(authToken ? { 'Cookie': authToken } : {})
-      },
+      headers: form.getHeaders(),
       maxContentLength: Infinity,
-      maxBodyLength: Infinity
+      maxBodyLength: Infinity,
+      timeout: 60000
     });
 
     console.log(`  ✅ Uploaded: ${fileType.toUpperCase()}`);
@@ -201,6 +190,9 @@ async function executeIllustratorScript(scriptPath, templatePath, outputBasePath
         'C:\\Program Files\\Adobe\\Adobe Illustrator 2024\\Support Files\\Contents\\Windows\\Illustrator.exe';
       command = `"${illustratorPath}" "${tempScriptPath}"`;
     } else if (isMac) {
+      const illustratorPath = process.env.ILLUSTRATOR_PATH || 
+        '/Applications/Adobe Illustrator 2024/Adobe Illustrator.app/Contents/MacOS/Adobe Illustrator';
+      // For macOS, use osascript to tell Illustrator to run the script
       command = `osascript -e 'tell application "Adobe Illustrator" to do javascript file "${tempScriptPath}"'`;
     } else {
       reject(new Error('Unsupported operating system'));
@@ -209,12 +201,19 @@ async function executeIllustratorScript(scriptPath, templatePath, outputBasePath
 
     console.log('  🎨 Executing Illustrator script...');
     
-    exec(command, { timeout: 60000 }, (error, stdout, stderr) => {
+    exec(command, { timeout: 120000 }, (error, stdout, stderr) => {
       // Clean up temp script
-      fs.removeSync(tempScriptPath);
+      try {
+        fs.removeSync(tempScriptPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
 
       if (error) {
         console.error('  ❌ Illustrator script error:', error.message);
+        if (error.message.includes('command not found')) {
+          console.error('  💡 Make sure Adobe Illustrator is installed and ILLUSTRATOR_PATH is set correctly in .env');
+        }
         reject(error);
         return;
       }
@@ -244,7 +243,7 @@ async function processDesignInstruction(instruction) {
     await axios.patch(
       `${WEB_APP_URL}/api/design-instructions/${id}`,
       { status: 'processing' },
-      { headers: authToken ? { 'Cookie': authToken } : {} }
+      { timeout: 10000 }
     );
 
     // Download template file
@@ -309,7 +308,7 @@ async function processDesignInstruction(instruction) {
     await axios.patch(
       `${WEB_APP_URL}/api/design-instructions/${id}`,
       { status: 'completed' },
-      { headers: authToken ? { 'Cookie': authToken } : {} }
+      { timeout: 10000 }
     );
 
     console.log('  ✅ Design instruction completed successfully!');
@@ -323,7 +322,7 @@ async function processDesignInstruction(instruction) {
       await axios.patch(
         `${WEB_APP_URL}/api/design-instructions/${id}`,
         { status: 'failed' },
-        { headers: authToken ? { 'Cookie': authToken } : {} }
+        { timeout: 10000 }
       );
     } catch (updateError) {
       console.error('  ❌ Failed to update status:', updateError.message);
@@ -364,14 +363,24 @@ async function pollForJobs() {
  * Start the bridge utility
  */
 async function start() {
-  // Authenticate
-  const authSuccess = await authenticate();
-  if (!authSuccess) {
-    console.error('\n❌ Failed to authenticate. Please check your credentials in .env file.');
+  // Test connectivity
+  const connected = await testConnectivity();
+  if (!connected) {
+    console.error('\n❌ Failed to connect to web app. Please check your WEB_APP_URL in .env file.');
+    console.error('   Current URL:', WEB_APP_URL);
+    console.error('\n💡 Tips:');
+    console.error('   - Make sure the web app is running');
+    console.error('   - Check for typos in the URL');
+    console.error('   - Use https:// for deployed apps');
+    console.error('   - Use http://localhost:3000 for local development');
     process.exit(1);
   }
 
-  console.log('\n✅ Bridge utility ready!');
+  console.log('\n⚠️  Note: Running in simplified authentication mode');
+  console.log('   The bridge will attempt to fetch jobs without full authentication.');
+  console.log('   This is a temporary setup for initial testing.');
+  console.log('');
+  console.log('✅ Bridge utility ready!');
   console.log(`⏱️  Polling every ${POLL_INTERVAL}ms for new jobs...`);
   console.log('\nPress Ctrl+C to stop.\n');
 
