@@ -15,6 +15,7 @@ import { ColorPicker } from '@/components/color-picker'
 import { Plus, Users, MapPin, Trash2, Edit, FolderKanban, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 
 interface School {
@@ -206,55 +207,57 @@ export function TeamsClient({ teams: initialTeams, schools }: TeamsClientProps) 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teams.map((team, index) => (
               <motion.div key={team.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                <Card className="hover:shadow-lg transition-shadow h-full">
-                  <CardHeader>
-                    {team?.logoPath && logoUrls[team.id] && (
-                      <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden mb-4">
-                        <Image src={logoUrls[team.id]} alt={team.name} fill className="object-contain p-4" />
+                <Link href={`/teams/${team.id}`}>
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                    <CardHeader>
+                      {team?.logoPath && logoUrls[team.id] && (
+                        <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden mb-4">
+                          <Image src={logoUrls[team.id]} alt={team.name} fill className="object-contain p-4" />
+                        </div>
+                      )}
+                      <CardTitle className="flex items-start justify-between">
+                        <span className="flex-1">{team.name}</span>
+                        <Badge variant="secondary" className="ml-2">
+                          <FolderKanban className="w-3 h-3 mr-1" />
+                          {team._count?.projects ?? 0}
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription className="space-y-1">
+                        <div className="font-medium text-sm">{team.school?.name}</div>
+                        {team?.address && (
+                          <div className="flex items-start space-x-2 text-xs">
+                            <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <span>{team.address}</span>
+                          </div>
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex space-x-2 mb-3">
+                        {team?.primaryColor && (
+                          <div className="flex items-center space-x-1">
+                            <div className="w-6 h-6 rounded border" style={{ backgroundColor: team.primaryColor }} />
+                            <span className="text-xs text-gray-600">Primary</span>
+                          </div>
+                        )}
+                        {team?.secondaryColor && (
+                          <div className="flex items-center space-x-1">
+                            <div className="w-6 h-6 rounded border" style={{ backgroundColor: team.secondaryColor }} />
+                            <span className="text-xs text-gray-600">Secondary</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <CardTitle className="flex items-start justify-between">
-                      <span className="flex-1">{team.name}</span>
-                      <Badge variant="secondary" className="ml-2">
-                        <FolderKanban className="w-3 h-3 mr-1" />
-                        {team._count?.projects ?? 0}
-                      </Badge>
-                    </CardTitle>
-                    <CardDescription className="space-y-1">
-                      <div className="font-medium text-sm">{team.school?.name}</div>
-                      {team?.address && (
-                        <div className="flex items-start space-x-2 text-xs">
-                          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span>{team.address}</span>
-                        </div>
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex space-x-2 mb-3">
-                      {team?.primaryColor && (
-                        <div className="flex items-center space-x-1">
-                          <div className="w-6 h-6 rounded border" style={{ backgroundColor: team.primaryColor }} />
-                          <span className="text-xs text-gray-600">Primary</span>
-                        </div>
-                      )}
-                      {team?.secondaryColor && (
-                        <div className="flex items-center space-x-1">
-                          <div className="w-6 h-6 rounded border" style={{ backgroundColor: team.secondaryColor }} />
-                          <span className="text-xs text-gray-600">Secondary</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(team)}>
-                        <Edit className="w-4 h-4 mr-2" />Edit
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(team.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.preventDefault(); handleEdit(team); }}>
+                          <Edit className="w-4 h-4 mr-2" />Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={(e) => { e.preventDefault(); handleDelete(team.id); }} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </div>

@@ -284,7 +284,9 @@ export function ItemsClient({ items, projects, templates }: { items: Item[]; pro
                 <Card className="hover:shadow-lg transition-shadow h-full">
                   <CardHeader>
                     <CardTitle className="flex items-start justify-between">
-                      <span className="flex-1">{item.name}</span>
+                      <Link href={`/items/${item.id}`} className="flex-1 hover:text-blue-600 transition-colors">
+                        {item.name}
+                      </Link>
                       <Badge variant={item.status === 'approved' ? 'default' : item.status === 'final' ? 'secondary' : 'outline'}>
                         {item.status}
                       </Badge>
@@ -310,7 +312,7 @@ export function ItemsClient({ items, projects, templates }: { items: Item[]; pro
                       <Link href={`/items/${item.id}`}>
                         <Button variant="default" size="sm" className="w-full">
                           <Palette className="w-4 h-4 mr-2" />
-                          Visual Editor
+                          View Details
                         </Button>
                       </Link>
                       <div className="flex space-x-2">

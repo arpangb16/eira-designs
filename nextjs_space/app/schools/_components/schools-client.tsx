@@ -13,6 +13,7 @@ import { FileUpload } from '@/components/file-upload'
 import { Plus, School, MapPin, Trash2, Edit, Users } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 
 interface School {
@@ -232,54 +233,62 @@ export function SchoolsClient({ schools: initialSchools }: SchoolsClientProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="hover:shadow-lg transition-shadow h-full">
-                  <CardHeader>
-                    {school?.logoPath && logoUrls[school.id] && (
-                      <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden mb-4">
-                        <Image
-                          src={logoUrls[school.id]}
-                          alt={school.name}
-                          fill
-                          className="object-contain p-4"
-                        />
+                <Link href={`/schools/${school.id}`}>
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                    <CardHeader>
+                      {school?.logoPath && logoUrls[school.id] && (
+                        <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden mb-4">
+                          <Image
+                            src={logoUrls[school.id]}
+                            alt={school.name}
+                            fill
+                            className="object-contain p-4"
+                          />
+                        </div>
+                      )}
+                      <CardTitle className="flex items-start justify-between">
+                        <span className="flex-1">{school.name}</span>
+                        <Badge variant="secondary" className="ml-2">
+                          <Users className="w-3 h-3 mr-1" />
+                          {school._count?.teams ?? 0}
+                        </Badge>
+                      </CardTitle>
+                      {school?.address && (
+                        <CardDescription className="flex items-start space-x-2">
+                          <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          <span>{school.address}</span>
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleEdit(school)
+                          }}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleDelete(school.id)
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                    )}
-                    <CardTitle className="flex items-start justify-between">
-                      <span className="flex-1">{school.name}</span>
-                      <Badge variant="secondary" className="ml-2">
-                        <Users className="w-3 h-3 mr-1" />
-                        {school._count?.teams ?? 0}
-                      </Badge>
-                    </CardTitle>
-                    {school?.address && (
-                      <CardDescription className="flex items-start space-x-2">
-                        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <span>{school.address}</span>
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleEdit(school)}
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(school.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </div>

@@ -294,15 +294,29 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
             {templates.map((template, index) => (
               <motion.div key={template.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                 <Card className="hover:shadow-lg transition-shadow h-full">
-                  {svgPreviews[template.id] && (
-                    <div className="relative w-full aspect-video bg-gray-100 border-b">
+                  <div className="relative w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 border-b">
+                    {svgPreviews[template.id] ? (
                       <div 
-                        className="w-full h-full p-4" 
+                        className="w-full h-full p-4 flex items-center justify-center" 
                         dangerouslySetInnerHTML={{ __html: svgPreviews[template.id] }}
                         style={{ overflow: 'hidden' }}
                       />
-                    </div>
-                  )}
+                    ) : template?.svgPath ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <Layers className="w-12 h-12 mx-auto text-gray-400 mb-2 animate-pulse" />
+                          <p className="text-sm text-gray-500">Loading preview...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <FileImage className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">No SVG preview</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <CardHeader>
                     <CardTitle className="flex items-start justify-between">
                       <span className="flex-1">{template.name}</span>

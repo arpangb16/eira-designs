@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, FolderKanban, Trash2, Edit, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface Team { id: string; name: string; school: { name: string } }
 interface Project {
@@ -129,22 +130,24 @@ export function ProjectsClient({ projects, teams }: { projects: Project[]; teams
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project, index) => (
               <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                <Card className="hover:shadow-lg transition-shadow h-full">
-                  <CardHeader>
-                    <CardTitle className="flex items-start justify-between"><span className="flex-1">{project.name}</span><Badge variant="secondary" className="ml-2"><Palette className="w-3 h-3 mr-1" />{project._count?.items ?? 0}</Badge></CardTitle>
-                    <CardDescription className="space-y-1">
-                      <div className="font-medium">{project.team?.name}</div>
-                      <div className="text-xs">{project.team?.school?.name}</div>
-                      {(project?.season || project?.year) && <div className="text-xs">{project.season} {project.year}</div>}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(project)}><Edit className="w-4 h-4 mr-2" />Edit</Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(project.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <Link href={`/projects/${project.id}`}>
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                    <CardHeader>
+                      <CardTitle className="flex items-start justify-between"><span className="flex-1">{project.name}</span><Badge variant="secondary" className="ml-2"><Palette className="w-3 h-3 mr-1" />{project._count?.items ?? 0}</Badge></CardTitle>
+                      <CardDescription className="space-y-1">
+                        <div className="font-medium">{project.team?.name}</div>
+                        <div className="text-xs">{project.team?.school?.name}</div>
+                        {(project?.season || project?.year) && <div className="text-xs">{project.season} {project.year}</div>}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.preventDefault(); handleEdit(project); }}><Edit className="w-4 h-4 mr-2" />Edit</Button>
+                        <Button variant="outline" size="sm" onClick={(e) => { e.preventDefault(); handleDelete(project.id); }} className="text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </div>

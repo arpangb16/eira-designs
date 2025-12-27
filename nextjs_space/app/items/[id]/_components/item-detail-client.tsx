@@ -4,266 +4,455 @@ import { useState, useEffect } from 'react'
 import { NavBar } from '@/components/nav-bar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { SVGEditor } from '@/components/svg-editor'
-import { SVGLayer, LayerChange } from '@/components/layer-inspector'
-import { ArrowLeft, Sparkles, Download, FileText, Layers } from 'lucide-react'
+import { ArrowLeft, Edit, FileImage, Download, Layers, FileType } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
-interface ItemDetailProps {
-  item: any
+interface Template {
+  id: string
+  name: string
+  category: string
+  filePath: string
+  fileIsPublic: boolean
+  svgPath: string | null
+  svgIsPublic: boolean
+  layerData: string | null
 }
 
-export function ItemDetailClient({ item }: ItemDetailProps) {
+interface Project {
+  id: string
+  name: string
+  team: {
+    id: string
+    name: string
+    school: {
+      id: string
+      name: string
+    }
+  }
+}
+
+interface Item {
+  id: string
+  name: string
+  status: string
+  projectId: string
+  templateId: string | null
+  createdAt: Date
+  updatedAt: Date
+  project: Project
+  template: Template | null
+  designInstructions: any[]
+  generatedFiles: any[]
+}
+
+const statuses = ['pending', 'in_progress', 'completed', 'cancelled']
+
+export function ItemDetailClient({ 
+  item, 
+  projects,
+  templates 
+}: { 
+  item: Item
+  projects: Project[]
+  templates: Template[]
+}) {
   const router = useRouter()
-  const [svgContent, setSvgContent] = useState<string>('')
-  const [layers, setLayers] = useState<SVGLayer[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [fileUrls, setFileUrls] = useState<Record<string, string>>({})
+  const [open, setOpen] = useState(false)
+  const [formData, setFormData] = useState({
+    name: item.name,
+    projectId: item.projectId,
+    templateId: item.templateId ?? '',
+    status: item.status,
+  })
+  const [loading, setLoading] = useState(false)
+  const [aiFileUrl, setAiFileUrl] = useState<string | null>(null)
+  const [svgPreview, setSvgPreview] = useState<string | null>(null)
 
-  // Fetch SVG content and parse layers
   useEffect(() => {
-    const fetchSvgData = async () => {
-      if (!item.template?.svgPath) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        // Get SVG file URL
-        const urlResponse = await fetch('/api/upload/file-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            cloud_storage_path: item.template.svgPath, 
-            isPublic: item.template.svgIsPublic ?? false 
-          }),
-        })
-        
-        if (!urlResponse.ok) throw new Error('Failed to get SVG URL')
-        const { url } = await urlResponse.json()
-        
-        // Fetch SVG content
-        const svgResponse = await fetch(url)
-        const content = await svgResponse.text()
-        setSvgContent(content)
-
-        // Parse layers from template if available
-        if (item.template.layerData) {
-          const parsed = JSON.parse(item.template.layerData)
-          setLayers(parsed.layers || [])
-        }
-      } catch (error) {
-        console.error('Failed to fetch SVG:', error)
-      } finally {
-        setLoading(false)
-      }
+    // Fetch .ai file URL
+    if (item.template?.filePath) {
+      fetchFileUrl(item.template.filePath, item.template.fileIsPublic, 'ai')
     }
 
-    fetchSvgData()
-  }, [item])
-
-  // Fetch generated file URLs
-  useEffect(() => {
-    const fetchFileUrls = async () => {
-      for (const file of item.generatedFiles) {
-        try {
-          const response = await fetch('/api/upload/file-url', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              cloud_storage_path: file.filePath, 
-              isPublic: file.fileIsPublic 
-            }),
-          })
-          if (response.ok) {
-            const { url } = await response.json()
-            setFileUrls(prev => ({ ...prev, [file.id]: url }))
-          }
-        } catch (error) {
-          console.error('Failed to fetch file URL:', error)
-        }
-      }
+    // Fetch SVG preview
+    if (item.template?.svgPath) {
+      fetchSvgPreview(item.template.svgPath, item.template.svgIsPublic)
     }
+  }, [item.template])
 
-    if (item.generatedFiles?.length > 0) {
-      fetchFileUrls()
-    }
-  }, [item.generatedFiles])
-
-  const handleSaveChanges = async (changes: Record<string, LayerChange>) => {
-    setSaving(true)
+  const fetchFileUrl = async (path: string, isPublic: boolean, type: string) => {
     try {
-      // Create a design instruction with the structured changes
-      const response = await fetch('/api/design-instructions', {
+      const response = await fetch('/api/upload/file-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itemId: item.id,
-          instruction: `Visual edit: ${Object.keys(changes).length} layer changes`,
-          parsedData: JSON.stringify({ changes }),
-          status: 'pending'
-        }),
+        body: JSON.stringify({ cloud_storage_path: path, isPublic }),
       })
-
       if (response.ok) {
-        alert('Design changes submitted! The bridge will process them shortly.')
-        router.refresh()
-      } else {
-        alert('Failed to save changes. Please try again.')
+        const { url } = await response.json()
+        if (type === 'ai') {
+          setAiFileUrl(url)
+        }
       }
     } catch (error) {
-      console.error('Failed to save changes:', error)
-      alert('An error occurred while saving.')
-    } finally {
-      setSaving(false)
+      console.error(`Failed to fetch ${type} file URL:`, error)
     }
   }
 
-  const handleDownloadFile = (fileId: string, fileName: string) => {
-    const url = fileUrls[fileId]
+  const fetchSvgPreview = async (path: string, isPublic: boolean) => {
+    try {
+      const response = await fetch('/api/upload/file-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cloud_storage_path: path, isPublic }),
+      })
+      if (response.ok) {
+        const { url } = await response.json()
+        // Fetch the SVG content
+        const svgResponse = await fetch(url)
+        const svgContent = await svgResponse.text()
+        setSvgPreview(svgContent)
+      }
+    } catch (error) {
+      console.error('Failed to fetch SVG preview:', error)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      if (response.ok) {
+        setOpen(false)
+        router.refresh()
+      }
+    } catch (error) {
+      console.error('Failed to update item:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDownload = (url: string | null, filename: string) => {
     if (!url) return
     const link = document.createElement('a')
     link.href = url
-    link.download = fileName
+    link.download = filename
     link.target = '_blank'
     link.click()
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-500'
+      case 'in_progress': return 'bg-blue-500'
+      case 'cancelled': return 'bg-red-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getLayerCount = (): number => {
+    if (!item.template?.layerData) return 0
+    try {
+      const parsed = JSON.parse(item.template.layerData)
+      return parsed?.layers?.length || 0
+    } catch {
+      return 0
+    }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
       <NavBar />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
-          <Link href="/items">
-            <Button variant="ghost" className="mb-4">
+          <Link href={`/projects/${item.project.id}`}>
+            <Button variant="ghost" size="sm" className="mb-4">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Items
+              Back to {item.project.name}
             </Button>
           </Link>
-          <div className="flex justify-between items-start">
+          <div className="flex items-start justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">{item.name}</h1>
-              <p className="text-lg text-gray-600">
-                {item.project.team.school.name} • {item.project.team.name} • {item.project.name}
+              <p className="text-lg text-gray-600 mb-2">
+                {item.project.name} • {item.project.team.name} • {item.project.team.school.name}
               </p>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${getStatusColor(item.status)}`} />
+                  <span className="text-sm font-medium capitalize">
+                    {item.status.replace('_', ' ')}
+                  </span>
+                </div>
+                {item.template && (
+                  <Badge variant="secondary">
+                    Template: {item.template.name}
+                  </Badge>
+                )}
+              </div>
             </div>
-            <Badge className="text-lg px-4 py-2">{item.status}</Badge>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg">
+                  <Edit className="w-5 h-5 mr-2" />
+                  Edit Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Edit Item</DialogTitle>
+                  <DialogDescription>Update item information</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label>Item Name *</Label>
+                      <Input 
+                        value={formData.name} 
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <Label>Project *</Label>
+                      <Select 
+                        value={formData.projectId} 
+                        onValueChange={(value) => setFormData({ ...formData, projectId: value })}
+                        required
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {projects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name} ({project.team.name})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Template</Label>
+                      <Select 
+                        value={formData.templateId} 
+                        onValueChange={(value) => setFormData({ ...formData, templateId: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a template..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templates.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name} ({template.category})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Status *</Label>
+                      <Select 
+                        value={formData.status} 
+                        onValueChange={(value) => setFormData({ ...formData, status: value })}
+                        required
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {statuses.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? 'Saving...' : 'Update'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
-        {/* Template Info */}
-        {item.template && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Template: {item.template.name}</CardTitle>
-              <CardDescription>
-                Category: {item.template.category}
-                {layers.length > 0 && (
-                  <span className="ml-4">
-                    <Layers className="inline w-4 h-4 mr-1" />
-                    {layers.length} layers available for editing
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-
-        {/* SVG Editor */}
-        {loading ? (
-          <Card className="p-12 text-center">
-            <p>Loading design editor...</p>
-          </Card>
-        ) : !item.template?.svgPath ? (
-          <Card className="p-12 text-center">
-            <Layers className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No SVG Preview Available</h3>
-            <p className="text-gray-600 mb-4">
-              This template doesn't have an SVG file. Upload an SVG to enable visual editing.
-            </p>
-            <p className="text-sm text-gray-500">
-              You can still create design instructions using text, but you won't see a live preview.
-            </p>
-          </Card>
-        ) : (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Visual Design Editor</h2>
-            <SVGEditor 
-              svgContent={svgContent} 
-              layers={layers}
-              onSave={handleSaveChanges}
-            />
-          </div>
-        )}
-
-        {/* Design Instructions */}
-        {item.designInstructions?.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Sparkles className="w-5 h-5 mr-2" />
-                Design Instructions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {item.designInstructions.map((instruction: any) => (
-                  <div key={instruction.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-sm text-gray-600">
-                        {new Date(instruction.createdAt).toLocaleString()}
-                      </p>
-                      <Badge 
-                        variant={
-                          instruction.status === 'completed' ? 'default' :
-                          instruction.status === 'processing' ? 'secondary' :
-                          instruction.status === 'failed' ? 'destructive' : 'outline'
-                        }
-                      >
-                        {instruction.status}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Template Files */}
+          {item.template && (
+            <>
+              {/* SVG Preview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center">
+                      <FileImage className="w-5 h-5 mr-2" />
+                      SVG Preview
+                    </span>
+                    {item.template.layerData && (
+                      <Badge variant="outline">
+                        <Layers className="w-3 h-3 mr-1" />
+                        {getLayerCount()} layers
                       </Badge>
-                    </div>
-                    <p className="text-gray-900">{instruction.instruction}</p>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    Visual preview of the template design
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden border">
+                    {svgPreview ? (
+                      <div 
+                        className="w-full h-full p-4 flex items-center justify-center" 
+                        dangerouslySetInnerHTML={{ __html: svgPreview }}
+                        style={{ overflow: 'hidden' }}
+                      />
+                    ) : item.template.svgPath ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <Layers className="w-12 h-12 mx-auto text-gray-400 mb-2 animate-pulse" />
+                          <p className="text-sm text-gray-500">Loading preview...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <FileImage className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">No SVG preview available</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                </CardContent>
+              </Card>
 
-        {/* Generated Files */}
-        {item.generatedFiles?.length > 0 && (
+              {/* AI File Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <FileType className="w-5 h-5 mr-2" />
+                    Master Template File
+                  </CardTitle>
+                  <CardDescription>
+                    Adobe Illustrator source file for high-quality output
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-medium text-gray-900">{item.template.name}.ai</p>
+                        <p className="text-sm text-gray-500">Category: {item.template.category}</p>
+                      </div>
+                      <Badge variant="secondary">.ai</Badge>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full mt-3"
+                      onClick={() => handleDownload(aiFileUrl, `${item.template?.name}.ai`)}
+                      disabled={!aiFileUrl}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download .AI File
+                    </Button>
+                  </div>
+                  {item.template.svgPath && (
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800 font-medium mb-2">
+                        <Layers className="w-4 h-4 inline mr-1" />
+                        Layer Information Available
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        This template has {getLayerCount()} editable layers that can be customized through the visual editor.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {!item.template && (
+            <Card className="lg:col-span-2">
+              <CardContent className="text-center py-12">
+                <FileImage className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No template assigned</h3>
+                <p className="text-gray-600 mb-4">Assign a template to this item to view and edit the design files</p>
+                <Button onClick={() => setOpen(true)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Item
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Design Instructions and Generated Files */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <FileText className="w-5 h-5 mr-2" />
-                Generated Files
-              </CardTitle>
+              <CardTitle>Design Instructions</CardTitle>
+              <CardDescription>
+                {item.designInstructions.length} instruction{item.designInstructions.length !== 1 ? 's' : ''}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {item.generatedFiles.map((file: any) => (
-                  <Button
-                    key={file.id}
-                    variant="outline"
-                    className="h-auto flex flex-col items-center p-4"
-                    onClick={() => handleDownloadFile(file.id, file.fileName)}
-                  >
-                    <FileText className="w-8 h-8 mb-2" />
-                    <span className="text-xs font-medium">{file.fileType.toUpperCase()}</span>
-                    <span className="text-xs text-gray-500 truncate w-full text-center">
-                      {file.fileName}
-                    </span>
-                  </Button>
-                ))}
-              </div>
+              {item.designInstructions.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-6">No design instructions yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {item.designInstructions.map((instruction: any) => (
+                    <div key={instruction.id} className="p-3 bg-gray-50 rounded border text-sm">
+                      <pre className="whitespace-pre-wrap break-words">{instruction.instruction}</pre>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Generated Files</CardTitle>
+              <CardDescription>
+                {item.generatedFiles.length} file{item.generatedFiles.length !== 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {item.generatedFiles.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-6">No generated files yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {item.generatedFiles.map((file: any) => (
+                    <div key={file.id} className="p-3 bg-gray-50 rounded border flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{file.format.toUpperCase()}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(file.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{file.status}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </main>
     </div>
   )

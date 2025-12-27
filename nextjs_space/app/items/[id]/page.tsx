@@ -1,14 +1,20 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth-options'
-import { prisma } from '@/lib/db'
 import { ItemDetailClient } from './_components/item-detail-client'
+import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ItemDetailPage({ params }: { params: { id: string } }) {
+export default async function ItemDetailPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session) {
+    redirect('/login')
+  }
 
   const item = await prisma.item.findUnique({
     where: { id: params.id },
@@ -36,5 +42,21 @@ export default async function ItemDetailPage({ params }: { params: { id: string 
     redirect('/items')
   }
 
-  return <ItemDetailClient item={item} />
+  // Fetch all projects and templates for the edit form
+  const projects = await prisma.project.findMany({
+    include: {
+      team: {
+        include: {
+          school: true
+        }
+      }
+    },
+    orderBy: { name: 'asc' }
+  })
+
+  const templates = await prisma.template.findMany({
+    orderBy: { name: 'asc' }
+  })
+
+  return <ItemDetailClient item={item} projects={projects} templates={templates} />
 }
