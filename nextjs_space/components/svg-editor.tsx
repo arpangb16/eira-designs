@@ -29,11 +29,24 @@ export function SVGEditor({ svgContent, layers, onSave, className }: SVGEditorPr
     // Apply each change to the SVG DOM
     Object.entries(changes).forEach(([layerId, change]) => {
       const element = doc.getElementById(layerId) || doc.querySelector(`[data-name="${layerId}"]`)
-      if (!element) return
+      if (!element) {
+        console.warn(`Layer not found: ${layerId}`)
+        return
+      }
 
       switch (change.type) {
         case 'text':
-          element.textContent = String(change.value)
+          // Find the text element within the group or use the element itself if it's a text element
+          const textElement = element.tagName.toLowerCase() === 'text' 
+            ? element 
+            : element.querySelector('text')
+          
+          if (textElement) {
+            textElement.textContent = String(change.value)
+            console.log(`Updated text for ${layerId}:`, change.value)
+          } else {
+            console.warn(`No text element found in layer: ${layerId}`)
+          }
           break
         case 'fill':
           element.setAttribute('fill', String(change.value))
@@ -43,6 +56,7 @@ export function SVGEditor({ svgContent, layers, onSave, className }: SVGEditorPr
           break
         case 'visibility':
           element.setAttribute('visibility', change.value ? 'visible' : 'hidden')
+          element.style.display = change.value ? '' : 'none'
           break
         case 'image':
           if (element.tagName.toLowerCase() === 'image') {
