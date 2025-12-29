@@ -80,6 +80,7 @@ export function ItemDetailClient({
   const [svgPreview, setSvgPreview] = useState<string | null>(null)
   const [svgLayers, setSvgLayers] = useState<SVGLayer[]>([])
   const [savingChanges, setSavingChanges] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     // Fetch .ai file URL
@@ -347,7 +348,7 @@ export function ItemDetailClient({
 
         {/* Template Design Section */}
         {item.template && (
-          <Tabs defaultValue="overview" className="mb-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
             <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="overview">
                 <FileImage className="w-4 h-4 mr-2" />

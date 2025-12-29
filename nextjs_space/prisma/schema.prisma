@@ -58,14 +58,15 @@ model VerificationToken {
 }
 
 model School {
-  id                 String   @id @default(cuid())
+  id                 String       @id @default(cuid())
   name               String
   address            String?
   logoPath           String?
-  logoIsPublic       Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  logoIsPublic       Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
   teams              Team[]
+  logos              SchoolLogo[]
 }
 
 model Team {
@@ -109,6 +110,7 @@ model Item {
   updatedAt           DateTime            @updatedAt
   designInstructions  DesignInstruction[]
   generatedFiles      GeneratedFile[]
+  variants            DesignVariant[]
 }
 
 model Template {
@@ -161,4 +163,109 @@ model GeneratedFile {
   filePath            String
   fileIsPublic        Boolean            @default(false)
   createdAt           DateTime           @default(now())
+}
+
+// Pattern Library (stripes, stars, squares, etc.)
+model Pattern {
+  id                String   @id @default(cuid())
+  name              String
+  category          String   // "body", "inseam", "cuff", etc.
+  description       String?  @db.Text
+  filePath          String   // S3: pattern_body_stripes.ai
+  fileIsPublic      Boolean  @default(false)
+  svgPath           String?  // For web preview
+  svgIsPublic       Boolean  @default(false)
+  thumbnailPath     String?
+  thumbnailIsPublic Boolean  @default(false)
+  colors            String?  @db.Text // JSON array of hex colors used in pattern
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([category])
+}
+
+// Embellishment Library (eagle claw, tiger, etc.)
+model Embellishment {
+  id                String   @id @default(cuid())
+  name              String
+  category          String?  // "animal", "abstract", "team-specific"
+  description       String?  @db.Text
+  filePath          String   // S3: embellishment_eagle_claw.ai
+  fileIsPublic      Boolean  @default(false)
+  svgPath           String?
+  svgIsPublic       Boolean  @default(false)
+  thumbnailPath     String?
+  thumbnailIsPublic Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([category])
+}
+
+// Design Variants (each combination preview)
+model DesignVariant {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  variantName     String
+  configuration   String   @db.Text // JSON: { bodyColor: "#FFD700", bodyPattern: "stripes", logoPosition: "A", ... }
+  status          String   @default("preview") // "preview" | "selected" | "generating" | "generated" | "failed"
+  previewSvgPath  String?
+  previewIsPublic Boolean  @default(true)
+  finalAiPath     String?
+  finalAiIsPublic Boolean  @default(false)
+  errorMessage    String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([itemId])
+  @@index([status])
+}
+
+// Font Library
+model Font {
+  id              String   @id @default(cuid())
+  name            String
+  fontFamily      String   // CSS font-family value
+  category        String   // "sans-serif", "serif", "script", "display"
+  filePath        String?  // S3: custom_font.otf (for custom fonts)
+  fileIsPublic    Boolean  @default(false)
+  isSystemFont    Boolean  @default(false) // true for web-safe fonts
+  previewImage    String?  // Preview image showing the font
+  previewIsPublic Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+}
+
+// Color Library (Pantone + Custom)
+model Color {
+  id          String   @id @default(cuid())
+  name        String
+  hexCode     String   @unique
+  pantoneCode String?  // e.g., "PANTONE 185 C"
+  category    String?  // "red", "blue", "green", etc.
+  isCustom    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isCustom])
+}
+
+// School Logos (multiple logos per school with default)
+model SchoolLogo {
+  id           String   @id @default(cuid())
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name         String   // "Primary Logo", "Secondary Logo", "Mascot"
+  logoPath     String
+  logoIsPublic Boolean  @default(false)
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([isDefault])
 }

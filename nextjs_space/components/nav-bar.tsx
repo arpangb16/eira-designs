@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Menu, Shirt, School, Users, FolderKanban, FileImage, Palette, LogOut } from 'lucide-react'
+import { Menu, Shirt, School, Users, FolderKanban, FileImage, Palette, LogOut, Grid3x3, Sparkles, Type } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -16,6 +16,10 @@ const navigation = [
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Items', href: '/items', icon: Palette },
   { name: 'Templates', href: '/templates', icon: FileImage },
+  { name: 'Patterns', href: '/patterns', icon: Grid3x3 },
+  { name: 'Embellishments', href: '/embellishments', icon: Sparkles },
+  { name: 'Fonts', href: '/fonts', icon: Type },
+  { name: 'Colors', href: '/colors', icon: Palette },
 ]
 
 export function NavBar() {
