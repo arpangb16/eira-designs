@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { NavBar } from '@/components/nav-bar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -89,7 +88,6 @@ export function EmbellishmentsClient({ embellishments }: { embellishments: Embel
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <NavBar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">

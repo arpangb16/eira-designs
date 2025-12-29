@@ -1,6 +1,5 @@
 'use client'
 
-import { NavBar } from '@/components/nav-bar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Type } from 'lucide-react'
@@ -16,7 +15,6 @@ type Font = {
 export function FontsClient({ fonts }: { fonts: Font[] }) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <NavBar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
