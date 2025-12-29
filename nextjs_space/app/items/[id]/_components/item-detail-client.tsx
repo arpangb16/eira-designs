@@ -10,13 +10,15 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Edit, FileImage, Download, Layers, FileType, Wand2 } from 'lucide-react'
+import { ArrowLeft, Edit, FileImage, Download, Layers, FileType, Wand2, Settings, Grid3x3 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { SVGEditor } from '@/components/svg-editor'
 import { SVGLayer, LayerChange } from '@/components/layer-inspector'
 import { toast } from 'sonner'
+import ConfigurationTab from './configuration-tab'
+import VariantGalleryTab from './variant-gallery-tab'
 
 interface Template {
   id: string
@@ -81,6 +83,7 @@ export function ItemDetailClient({
   const [svgLayers, setSvgLayers] = useState<SVGLayer[]>([])
   const [savingChanges, setSavingChanges] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const [variantRefreshTrigger, setVariantRefreshTrigger] = useState(0)
 
   useEffect(() => {
     // Fetch .ai file URL
@@ -349,7 +352,7 @@ export function ItemDetailClient({
         {/* Template Design Section */}
         {item.template && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsList className="grid w-full max-w-4xl grid-cols-4">
               <TabsTrigger value="overview">
                 <FileImage className="w-4 h-4 mr-2" />
                 Overview
@@ -357,6 +360,14 @@ export function ItemDetailClient({
               <TabsTrigger value="editor" disabled={!svgPreview || svgLayers.length === 0}>
                 <Wand2 className="w-4 h-4 mr-2" />
                 Visual Editor
+              </TabsTrigger>
+              <TabsTrigger value="configuration" disabled={!item.template.svgPath}>
+                <Settings className="w-4 h-4 mr-2" />
+                Configuration
+              </TabsTrigger>
+              <TabsTrigger value="variants">
+                <Grid3x3 className="w-4 h-4 mr-2" />
+                Variant Gallery
               </TabsTrigger>
             </TabsList>
 
@@ -485,6 +496,36 @@ export function ItemDetailClient({
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            <TabsContent value="configuration" className="mt-6">
+              {item.template.svgPath ? (
+                <ConfigurationTab
+                  itemId={item.id}
+                  schoolId={item.project.team.school.id}
+                  onVariantsGenerated={() => {
+                    setVariantRefreshTrigger(prev => prev + 1);
+                    setActiveTab('variants');
+                  }}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-12">
+                    <Settings className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No SVG template available</h3>
+                    <p className="text-gray-600">
+                      Upload an SVG file to the template to enable variant generation
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="variants" className="mt-6">
+              <VariantGalleryTab 
+                itemId={item.id} 
+                refreshTrigger={variantRefreshTrigger}
+              />
             </TabsContent>
           </Tabs>
         )}
