@@ -27,5 +27,32 @@ export default async function ItemsPage() {
     prisma.template.findMany({ orderBy: { name: 'asc' } }),
   ])
 
-  return <ItemsClient items={items} projects={projects} templates={templates} />
+  // Serialize dates for client component
+  const serializedItems = items.map(item => ({
+    ...item,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
+    project: {
+      ...item.project,
+      createdAt: item.project.createdAt.toISOString(),
+      updatedAt: item.project.updatedAt.toISOString(),
+      team: {
+        ...item.project.team,
+        createdAt: item.project.team.createdAt.toISOString(),
+        updatedAt: item.project.team.updatedAt.toISOString(),
+        school: {
+          ...item.project.team.school,
+          createdAt: item.project.team.school.createdAt.toISOString(),
+          updatedAt: item.project.team.school.updatedAt.toISOString(),
+        },
+      },
+    },
+    template: item.template ? {
+      ...item.template,
+      createdAt: item.template.createdAt.toISOString(),
+      updatedAt: item.template.updatedAt.toISOString(),
+    } : null,
+  }))
+
+  return <ItemsClient items={serializedItems} projects={projects} templates={templates} />
 }

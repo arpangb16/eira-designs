@@ -50,8 +50,8 @@ interface Item {
   status: string
   projectId: string
   templateId: string | null
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
   project: Project
   template: Template | null
   designInstructions: any[]

@@ -58,5 +58,63 @@ export default async function ItemDetailPage({
     orderBy: { name: 'asc' }
   })
 
-  return <ItemDetailClient item={item} projects={projects} templates={templates} />
+  // Serialize dates for client component
+  const serializedItem = {
+    ...item,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
+    project: {
+      ...item.project,
+      createdAt: item.project.createdAt.toISOString(),
+      updatedAt: item.project.updatedAt.toISOString(),
+      team: {
+        ...item.project.team,
+        createdAt: item.project.team.createdAt.toISOString(),
+        updatedAt: item.project.team.updatedAt.toISOString(),
+        school: {
+          ...item.project.team.school,
+          createdAt: item.project.team.school.createdAt.toISOString(),
+          updatedAt: item.project.team.school.updatedAt.toISOString(),
+        },
+      },
+    },
+    template: item.template ? {
+      ...item.template,
+      createdAt: item.template.createdAt.toISOString(),
+      updatedAt: item.template.updatedAt.toISOString(),
+    } : null,
+    designInstructions: item.designInstructions.map(di => ({
+      ...di,
+      createdAt: di.createdAt.toISOString(),
+      updatedAt: di.updatedAt.toISOString(),
+    })),
+    generatedFiles: item.generatedFiles.map(gf => ({
+      ...gf,
+      createdAt: gf.createdAt.toISOString(),
+    })),
+  }
+
+  const serializedProjects = projects.map(project => ({
+    ...project,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+    team: {
+      ...project.team,
+      createdAt: project.team.createdAt.toISOString(),
+      updatedAt: project.team.updatedAt.toISOString(),
+      school: {
+        ...project.team.school,
+        createdAt: project.team.school.createdAt.toISOString(),
+        updatedAt: project.team.school.updatedAt.toISOString(),
+      },
+    },
+  }))
+
+  const serializedTemplates = templates.map(template => ({
+    ...template,
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
+  }))
+
+  return <ItemDetailClient item={serializedItem} projects={serializedProjects} templates={serializedTemplates} />
 }
