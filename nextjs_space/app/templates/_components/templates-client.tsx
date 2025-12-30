@@ -95,36 +95,79 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
 
   const handleSvgUpload = async (cloud_storage_path: string, isPublic: boolean) => {
     setParsingSvg(true)
+    console.log('[Templates] Starting SVG upload process:', { cloud_storage_path, isPublic })
+    
     try {
-      // Fetch the SVG content
+      // Step 1: Get the file URL from S3
+      console.log('[Templates] Step 1: Fetching file URL...')
       const urlResponse = await fetch('/api/upload/file-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cloud_storage_path, isPublic }),
       })
+      
+      if (!urlResponse.ok) {
+        const errorData = await urlResponse.json()
+        console.error('[Templates] Failed to get file URL:', errorData)
+        throw new Error(`Failed to get file URL: ${errorData.error}`)
+      }
+      
       const { url } = await urlResponse.json()
+      console.log('[Templates] Got file URL successfully')
       
+      // Step 2: Fetch the SVG content from S3
+      console.log('[Templates] Step 2: Fetching SVG content from S3...')
       const svgResponse = await fetch(url)
-      const svgContent = await svgResponse.text()
       
-      // Parse the SVG to extract layers
+      if (!svgResponse.ok) {
+        console.error('[Templates] Failed to fetch SVG from S3:', svgResponse.status, svgResponse.statusText)
+        throw new Error(`Failed to fetch SVG from S3: ${svgResponse.statusText}`)
+      }
+      
+      const svgContent = await svgResponse.text()
+      console.log('[Templates] SVG content fetched, length:', svgContent.length)
+      
+      // Step 3: Parse the SVG to extract layers
+      console.log('[Templates] Step 3: Parsing SVG layers...')
       const parseResponse = await fetch('/api/templates/parse-svg', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ svgContent }),
       })
       
-      if (parseResponse.ok) {
-        const { parsed } = await parseResponse.json()
+      if (!parseResponse.ok) {
+        const errorData = await parseResponse.json()
+        console.error('[Templates] Failed to parse SVG:', errorData)
+        // Still save the SVG even if parsing fails
+        console.log('[Templates] Saving SVG without layer data due to parsing error')
         setFormData(prev => ({ 
           ...prev, 
           svgPath: cloud_storage_path, 
           svgIsPublic: isPublic,
-          layerData: JSON.stringify(parsed)
+          layerData: ''
         }))
+        return
       }
+      
+      const { parsed } = await parseResponse.json()
+      console.log('[Templates] SVG parsed successfully, layers found:', parsed?.layers?.length || 0)
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        svgPath: cloud_storage_path, 
+        svgIsPublic: isPublic,
+        layerData: JSON.stringify(parsed)
+      }))
+      console.log('[Templates] SVG upload process completed successfully')
     } catch (error) {
-      console.error('Failed to parse SVG:', error)
+      console.error('[Templates] SVG upload process failed:', error)
+      // Still save the SVG path even if processing fails
+      setFormData(prev => ({ 
+        ...prev, 
+        svgPath: cloud_storage_path, 
+        svgIsPublic: isPublic,
+        layerData: ''
+      }))
     } finally {
       setParsingSvg(false)
     }
