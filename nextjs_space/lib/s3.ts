@@ -11,6 +11,8 @@ export async function generatePresignedUploadUrl(
   contentType: string,
   isPublic: boolean = false
 ): Promise<{ uploadUrl: string; cloud_storage_path: string }> {
+  console.log('[S3] Generating presigned URL for:', { fileName, contentType, isPublic, bucketName, folderPrefix });
+  
   const timestamp = Date.now();
   const cloud_storage_path = isPublic
     ? `${folderPrefix}public/uploads/${timestamp}-${fileName}`
@@ -22,9 +24,14 @@ export async function generatePresignedUploadUrl(
     ContentType: contentType,
   });
 
-  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-
-  return { uploadUrl, cloud_storage_path };
+  try {
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    console.log('[S3] Successfully generated presigned URL for:', cloud_storage_path);
+    return { uploadUrl, cloud_storage_path };
+  } catch (error) {
+    console.error('[S3] Error generating presigned URL:', error);
+    throw error;
+  }
 }
 
 // Initiate multipart upload (for files >100MB)

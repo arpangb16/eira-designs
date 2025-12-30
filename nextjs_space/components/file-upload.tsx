@@ -78,8 +78,9 @@ export function FileUpload({
         }
       }, 2000)
     } catch (err) {
-      console.error('Upload error:', err)
-      setError('Upload failed. Please try again.')
+      console.error('[FileUpload] Upload error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed. Please try again.'
+      setError(errorMessage)
     } finally {
       setUploading(false)
     }
@@ -87,35 +88,41 @@ export function FileUpload({
 
   const singlePartUpload = async (file: File) => {
     // Get presigned URL
+    console.log('[FileUpload] Requesting presigned URL for:', file.name)
     const response = await fetch('/api/upload/presigned', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fileName: file.name,
-        contentType: file.type,
+        contentType: file.type || 'application/octet-stream',
         isPublic,
       }),
     })
 
     if (!response.ok) {
-      throw new Error('Failed to get upload URL')
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      console.error('[FileUpload] Failed to get upload URL:', errorData)
+      throw new Error(errorData.error || 'Failed to get upload URL')
     }
 
     const { uploadUrl, cloud_storage_path } = await response.json()
+    console.log('[FileUpload] Got presigned URL, uploading to S3...')
 
     // Upload file to S3
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
-        'Content-Type': file.type,
+        'Content-Type': file.type || 'application/octet-stream',
       },
       body: file,
     })
 
     if (!uploadResponse.ok) {
-      throw new Error('Failed to upload file')
+      console.error('[FileUpload] S3 upload failed:', uploadResponse.status, uploadResponse.statusText)
+      throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`)
     }
 
+    console.log('[FileUpload] Upload successful:', cloud_storage_path)
     setProgress(100)
     onUploadComplete(cloud_storage_path, isPublic)
   }
