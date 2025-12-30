@@ -1,0 +1,18 @@
+{
+  "polling": {
+    "enabled": true,
+    "intervalMs": 5000
+  },
+  "illustrator": {
+    "autoLaunch": false,
+    "closeAfterExport": false
+  },
+  "export": {
+    "formats": ["ai", "svg", "pdf", "png"],
+    "pngResolution": 300
+  },
+  "cleanup": {
+    "deleteTempFiles": true,
+    "keepOutputFiles": false
+  }
+}
