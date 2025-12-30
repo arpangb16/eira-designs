@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(patterns)
+    console.log('[PATTERNS] Fetched patterns:', patterns.length)
+    return NextResponse.json({ patterns })
   } catch (error) {
-    console.error('Error fetching patterns:', error)
+    console.error('[PATTERNS] Error fetching patterns:', error)
     return NextResponse.json({ error: 'Failed to fetch patterns' }, { status: 500 })
   }
 }

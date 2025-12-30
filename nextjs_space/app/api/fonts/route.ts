@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(fonts)
+    console.log('[FONTS] Fetched fonts:', fonts.length)
+    return NextResponse.json({ fonts })
   } catch (error) {
-    console.error('Error fetching fonts:', error)
+    console.error('[FONTS] Error fetching fonts:', error)
     return NextResponse.json({ error: 'Failed to fetch fonts' }, { status: 500 })
   }
 }

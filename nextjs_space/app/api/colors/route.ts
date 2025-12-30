@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
       orderBy: [{ isCustom: 'asc' }, { category: 'asc' }, { name: 'asc' }],
     })
 
-    return NextResponse.json(colors)
+    console.log('[COLORS] Fetched colors:', colors.length)
+    return NextResponse.json({ colors })
   } catch (error) {
-    console.error('Error fetching colors:', error)
+    console.error('[COLORS] Error fetching colors:', error)
     return NextResponse.json({ error: 'Failed to fetch colors' }, { status: 500 })
   }
 }

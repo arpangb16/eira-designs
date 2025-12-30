@@ -68,6 +68,7 @@ export default function ConfigurationTab({ itemId, schoolId, onVariantsGenerated
   useEffect(() => {
     async function fetchLibraries() {
       try {
+        console.log('[ConfigTab] Fetching design libraries...');
         const [colorsRes, patternsRes, fontsRes, logosRes] = await Promise.all([
           fetch('/api/colors'),
           fetch('/api/patterns'),
@@ -77,18 +78,35 @@ export default function ConfigurationTab({ itemId, schoolId, onVariantsGenerated
 
         if (colorsRes.ok) {
           const data = await colorsRes.json();
+          console.log('[ConfigTab] Colors loaded:', data.colors?.length || 0);
           setColors(data.colors || []);
+          if (!data.colors || data.colors.length === 0) {
+            toast.error('No colors available. Please add colors to the library first.');
+          }
+        } else {
+          console.error('[ConfigTab] Failed to fetch colors:', colorsRes.status);
+          toast.error('Failed to load colors');
         }
+        
         if (patternsRes.ok) {
           const data = await patternsRes.json();
+          console.log('[ConfigTab] Patterns loaded:', data.patterns?.length || 0);
           setPatterns(data.patterns || []);
+        } else {
+          console.error('[ConfigTab] Failed to fetch patterns:', patternsRes.status);
         }
+        
         if (fontsRes.ok) {
           const data = await fontsRes.json();
+          console.log('[ConfigTab] Fonts loaded:', data.fonts?.length || 0);
           setFonts(data.fonts || []);
+        } else {
+          console.error('[ConfigTab] Failed to fetch fonts:', fontsRes.status);
         }
+        
         if (logosRes.ok) {
           const data = await logosRes.json();
+          console.log('[ConfigTab] Logos loaded:', data.logos?.length || 0);
           setLogos(data.logos || []);
           // Auto-select default logo
           const defaultLogo = data.logos?.find((l: SchoolLogo) => l.isDefault);
@@ -96,9 +114,11 @@ export default function ConfigurationTab({ itemId, schoolId, onVariantsGenerated
             setLogoFrontLarge(defaultLogo.id);
             setLogoBackSmall(defaultLogo.id);
           }
+        } else {
+          console.error('[ConfigTab] Failed to fetch logos:', logosRes.status);
         }
       } catch (error) {
-        console.error('Error fetching libraries:', error);
+        console.error('[ConfigTab] Error fetching libraries:', error);
         toast.error('Failed to load design libraries');
       }
     }
@@ -166,6 +186,15 @@ export default function ConfigurationTab({ itemId, schoolId, onVariantsGenerated
           You can select up to 20 variants maximum.
         </AlertDescription>
       </Alert>
+
+      {colors.length === 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No colors available in the library. Please add colors from the Colors page (right sidebar) before configuring your design.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Colors Section */}
       <Card>
