@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Sparkles, Layers, Type, Palette, AlertCircle, Grid3x3, Image as ImageIcon, Plus, X } from 'lucide-react';
+import { Loader2, Sparkles, Layers, Type, Palette, AlertCircle, Grid3x3, Image as ImageIcon, Plus, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { EnhancedColorPicker } from '@/components/enhanced-color-picker';
+import { LogoPicker } from '@/components/logo-picker';
+import Image from 'next/image';
 
 interface SVGLayer {
   id: string;
@@ -45,8 +47,9 @@ interface Embellishment {
 interface LayerConfig {
   layerId: string;
   layerName: string;
-  layerType: 'text' | 'graphic';
-  value: string; // text content or hex color
+  layerType: 'text' | 'graphic' | 'logo';
+  value: string; // text content, hex color, or logo path
+  logoIsPublic?: boolean; // For logo layers
 }
 
 interface AdditionalLayer {
@@ -75,6 +78,15 @@ export default function LayerConfigurationTab({
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [embellishments, setEmbellishments] = useState<Embellishment[]>([]);
   const [additionalLayers, setAdditionalLayers] = useState<AdditionalLayer[]>([]);
+  const [logoPickerOpen, setLogoPickerOpen] = useState(false);
+  const [currentLogoLayerId, setCurrentLogoLayerId] = useState<string | null>(null);
+
+  // Check if a layer is a logo layer based on its name
+  function isLogoLayer(layer: SVGLayer): boolean {
+    const logoKeywords = ['logo', 'emblem', 'badge', 'crest'];
+    const layerName = layer.name.toLowerCase();
+    return logoKeywords.some(keyword => layerName.includes(keyword));
+  }
 
   // Check if a layer or its children have fill colors
   function hasColorInChildren(layer: SVGLayer): boolean {
@@ -139,11 +151,28 @@ export default function LayerConfigurationTab({
         const initialConfigs: Record<string, LayerConfig> = {};
         flattenedLayers.forEach(layer => {
           const isTextLayer = layer.type === 'text' || layer.content;
+          const isLogo = isLogoLayer(layer);
+          
+          let layerType: 'text' | 'graphic' | 'logo';
+          let value: string;
+          
+          if (isLogo) {
+            layerType = 'logo';
+            value = ''; // No logo selected initially
+          } else if (isTextLayer) {
+            layerType = 'text';
+            value = layer.content || '';
+          } else {
+            layerType = 'graphic';
+            value = getFirstFillColor(layer);
+          }
+          
           initialConfigs[layer.id] = {
             layerId: layer.id,
             layerName: layer.name,
-            layerType: isTextLayer ? 'text' : 'graphic',
-            value: isTextLayer ? (layer.content || '') : getFirstFillColor(layer)
+            layerType,
+            value,
+            logoIsPublic: isLogo ? true : undefined
           };
         });
         setLayerConfigs(initialConfigs);
@@ -181,14 +210,29 @@ export default function LayerConfigurationTab({
   }, []);
 
   // Update layer configuration
-  function updateLayerConfig(layerId: string, value: string) {
+  function updateLayerConfig(layerId: string, value: string, logoIsPublic?: boolean) {
     setLayerConfigs(prev => ({
       ...prev,
       [layerId]: {
         ...prev[layerId],
-        value
+        value,
+        ...(logoIsPublic !== undefined && { logoIsPublic })
       }
     }));
+  }
+
+  // Open logo picker for a specific layer
+  function openLogoPicker(layerId: string) {
+    setCurrentLogoLayerId(layerId);
+    setLogoPickerOpen(true);
+  }
+
+  // Handle logo selection from picker
+  function handleLogoSelected(logoPath: string, logoIsPublic: boolean) {
+    if (currentLogoLayerId) {
+      updateLayerConfig(currentLogoLayerId, logoPath, logoIsPublic);
+      toast.success('Logo selected successfully');
+    }
   }
 
   // Add pattern layer
@@ -302,6 +346,9 @@ export default function LayerConfigurationTab({
   const graphicLayers = layers.filter(layer => 
     layerConfigs[layer.id]?.layerType === 'graphic'
   );
+  const logoLayers = layers.filter(layer => 
+    layerConfigs[layer.id]?.layerType === 'logo'
+  );
 
   if (!templateLayerData) {
     return (
@@ -396,6 +443,33 @@ export default function LayerConfigurationTab({
                     onChange={(color) => updateLayerConfig(layer.id, color)}
                   />
                 </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Logo Layers Section */}
+      {logoLayers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Logo Layers ({logoLayers.length})
+            </CardTitle>
+            <CardDescription>Upload or select logos from your library</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {logoLayers.map(layer => {
+              const config = layerConfigs[layer.id];
+              if (!config) return null;
+
+              return (
+                <LogoLayerControl
+                  key={layer.id}
+                  config={config}
+                  onSelectLogo={() => openLogoPicker(layer.id)}
+                />
               );
             })}
           </CardContent>
@@ -581,6 +655,112 @@ export default function LayerConfigurationTab({
           )}
         </Button>
       </div>
+
+      {/* Logo Picker Dialog */}
+      {currentLogoLayerId && (
+        <LogoPicker
+          open={logoPickerOpen}
+          onOpenChange={setLogoPickerOpen}
+          onSelect={handleLogoSelected}
+          itemId={itemId}
+          currentLogoPath={layerConfigs[currentLogoLayerId]?.value || null}
+        />
+      )}
+    </div>
+  );
+}
+
+// Logo Layer Control Component
+interface LogoLayerControlProps {
+  config: LayerConfig;
+  onSelectLogo: () => void;
+}
+
+function LogoLayerControl({ config, onSelectLogo }: LogoLayerControlProps) {
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
+  useEffect(() => {
+    if (config.value && config.logoIsPublic !== undefined) {
+      loadLogoPreview();
+    }
+  }, [config.value, config.logoIsPublic]);
+
+  const loadLogoPreview = async () => {
+    if (!config.value) return;
+    
+    setLoadingPreview(true);
+    try {
+      const response = await fetch('/api/upload/file-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          cloud_storage_path: config.value, 
+          isPublic: config.logoIsPublic 
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLogoPreviewUrl(data.url);
+      }
+    } catch (error) {
+      console.error('Failed to load logo preview:', error);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>
+        {config.layerName}
+        <span className="ml-2 text-xs text-muted-foreground">({config.layerId})</span>
+      </Label>
+      
+      <div className="flex items-center gap-3">
+        {/* Logo Preview */}
+        {config.value ? (
+          <div className="relative w-24 h-24 border-2 border-border rounded-lg overflow-hidden bg-muted">
+            {loadingPreview ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : logoPreviewUrl ? (
+              <Image
+                src={logoPreviewUrl}
+                alt={config.layerName}
+                fill
+                className="object-contain p-2"
+                sizes="96px"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <ImageIcon className="w-8 h-8" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="w-24 h-24 border-2 border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50">
+            <ImageIcon className="w-8 h-8 text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Select/Change Button */}
+        <Button 
+          variant="outline" 
+          onClick={onSelectLogo}
+          className="flex-1"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          {config.value ? 'Change Logo' : 'Select Logo'}
+        </Button>
+      </div>
+
+      {config.value && (
+        <p className="text-xs text-muted-foreground">
+          Logo selected • Click "Change Logo" to select a different one
+        </p>
+      )}
     </div>
   );
 }
