@@ -129,21 +129,69 @@ export default function VisualEditorTab({
     return undefined;
   }
 
+  // Process layers hierarchically - keep structure for cascading display
+  // Only return top-level layers, keeping their children attached
   function flattenLayers(layers: SVGLayer[]): SVGLayer[] {
-    let result: SVGLayer[] = [];
-    for (const layer of layers) {
+    const result: SVGLayer[] = [];
+    
+    layers.forEach(layer => {
+      // For top-level groups (like Body, Inseam, etc.), include them with their children
       if (layer.type === 'group' && layer.children && layer.children.length > 0) {
-        if (hasColorInChildren(layer)) {
-          result.push(layer);
-        }
-        result = result.concat(flattenLayers(layer.children));
-      } else {
-        if (layer.type === 'text' || layer.fill || isLogoLayer(layer)) {
+        // Check if any children have fill colors (colorable)
+        const hasColorableChildren = hasColorInChildren(layer);
+        if (hasColorableChildren) {
+          // Keep the layer with its children structure intact
           result.push(layer);
         }
       }
-    }
+      // For text layers or layers with content, include them
+      else if (layer.type === 'text' || layer.content) {
+        result.push(layer);
+      }
+      // For logo layers, include them
+      else if (isLogoLayer(layer)) {
+        result.push(layer);
+      }
+      // For leaf layers with fill, include them
+      else if (layer.fill && (!layer.children || layer.children.length === 0)) {
+        result.push(layer);
+      }
+    });
+    
     return result;
+  }
+
+  // Recursively initialize configs for a layer and its children
+  function initializeLayerConfig(layer: SVGLayer, configs: Record<string, LayerConfig>) {
+    const isTextLayer = layer.type === 'text' || layer.content;
+    const isLogo = isLogoLayer(layer);
+    
+    let layerType: 'text' | 'graphic' | 'logo';
+    let value: string;
+    
+    if (isLogo) {
+      layerType = 'logo';
+      value = '';
+    } else if (isTextLayer) {
+      layerType = 'text';
+      value = layer.content || '';
+    } else {
+      layerType = 'graphic';
+      value = getFirstFillColor(layer) || '#000000';
+    }
+    
+    configs[layer.id] = {
+      layerId: layer.id,
+      layerName: layer.name,
+      layerType,
+      value,
+      logoIsPublic: isLogo ? true : undefined
+    };
+
+    // Recursively initialize children
+    if (layer.children && layer.children.length > 0) {
+      layer.children.forEach(child => initializeLayerConfig(child, configs));
+    }
   }
 
   // Fetch initial data
@@ -152,35 +200,13 @@ export default function VisualEditorTab({
       try {
         const parsed = JSON.parse(templateLayerData);
         if (parsed.layers) {
-          const flattened = flattenLayers(parsed.layers);
-          setLayers(flattened);
+          // Process layers hierarchically (keeps structure)
+          const processedLayers = flattenLayers(parsed.layers);
+          setLayers(processedLayers);
 
-          // Initialize layer configs
+          // Initialize layer configurations recursively (includes all children)
           const configs: Record<string, LayerConfig> = {};
-          flattened.forEach(layer => {
-            if (layer.type === 'text') {
-              configs[layer.id] = {
-                layerId: layer.id,
-                layerName: layer.name,
-                layerType: 'text',
-                value: layer.content || ''
-              };
-            } else if (isLogoLayer(layer)) {
-              configs[layer.id] = {
-                layerId: layer.id,
-                layerName: layer.name,
-                layerType: 'logo',
-                value: ''
-              };
-            } else if (layer.fill) {
-              configs[layer.id] = {
-                layerId: layer.id,
-                layerName: layer.name,
-                layerType: 'graphic',
-                value: getFirstFillColor(layer) || '#000000'
-              };
-            }
-          });
+          processedLayers.forEach(layer => initializeLayerConfig(layer, configs));
           setLayerConfigs(configs);
         }
       } catch (error) {
@@ -413,10 +439,10 @@ export default function VisualEditorTab({
     }
   };
 
-  // Categorize layers
-  const textLayers = Object.values(layerConfigs).filter(c => c.layerType === 'text');
-  const graphicLayers = Object.values(layerConfigs).filter(c => c.layerType === 'graphic');
-  const logoLayers = Object.values(layerConfigs).filter(c => c.layerType === 'logo');
+  // Categorize layers - Filter only top-level layers, not all nested children
+  const textLayers = layers.filter(layer => layerConfigs[layer.id]?.layerType === 'text');
+  const graphicLayers = layers.filter(layer => layerConfigs[layer.id]?.layerType === 'graphic');
+  const logoLayers = layers.filter(layer => layerConfigs[layer.id]?.layerType === 'logo');
 
   return (
     <div className="space-y-6">
@@ -468,16 +494,20 @@ export default function VisualEditorTab({
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4 pt-2">
-                      {textLayers.map(config => (
-                        <div key={config.layerId} className="space-y-2">
-                          <Label className="text-sm font-medium">{config.layerName}</Label>
-                          <Input
-                            value={config.value}
-                            onChange={(e) => handleLayerConfigChange(config.layerId, e.target.value)}
-                            placeholder="Enter text..."
-                          />
-                        </div>
-                      ))}
+                      {textLayers.map(layer => {
+                        const config = layerConfigs[layer.id];
+                        if (!config) return null;
+                        return (
+                          <div key={layer.id} className="space-y-2">
+                            <Label className="text-sm font-medium">{config.layerName}</Label>
+                            <Input
+                              value={config.value}
+                              onChange={(e) => handleLayerConfigChange(layer.id, e.target.value)}
+                              placeholder="Enter text..."
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -494,15 +524,19 @@ export default function VisualEditorTab({
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4 pt-2">
-                      {graphicLayers.map(config => (
-                        <div key={config.layerId} className="space-y-2">
-                          <EnhancedColorPicker
-                            label={config.layerName}
-                            color={config.value}
-                            onChange={(color) => handleLayerConfigChange(config.layerId, color)}
-                          />
-                        </div>
-                      ))}
+                      {graphicLayers.map(layer => {
+                        const config = layerConfigs[layer.id];
+                        if (!config) return null;
+                        return (
+                          <div key={layer.id} className="space-y-2">
+                            <EnhancedColorPicker
+                              label={config.layerName}
+                              color={config.value}
+                              onChange={(color) => handleLayerConfigChange(layer.id, color)}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -519,34 +553,38 @@ export default function VisualEditorTab({
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4 pt-2">
-                      {logoLayers.map(config => (
-                        <div key={config.layerId} className="space-y-2">
-                          <Label className="text-sm font-medium">{config.layerName}</Label>
-                          {config.value ? (
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 p-2 bg-gray-50 rounded border">
-                                <p className="text-xs text-gray-600 truncate">{config.value.split('/').pop()}</p>
+                      {logoLayers.map(layer => {
+                        const config = layerConfigs[layer.id];
+                        if (!config) return null;
+                        return (
+                          <div key={layer.id} className="space-y-2">
+                            <Label className="text-sm font-medium">{config.layerName}</Label>
+                            {config.value ? (
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 p-2 bg-gray-50 rounded border">
+                                  <p className="text-xs text-gray-600 truncate">{config.value.split('/').pop()}</p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleLogoSelect(layer.id)}
+                                >
+                                  Change
+                                </Button>
                               </div>
+                            ) : (
                               <Button
-                                size="sm"
+                                className="w-full"
                                 variant="outline"
-                                onClick={() => handleLogoSelect(config.layerId)}
+                                onClick={() => handleLogoSelect(layer.id)}
                               >
-                                Change
+                                <ImageIcon className="w-4 h-4 mr-2" />
+                                Select Logo
                               </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              className="w-full"
-                              variant="outline"
-                              onClick={() => handleLogoSelect(config.layerId)}
-                            >
-                              <ImageIcon className="w-4 h-4 mr-2" />
-                              Select Logo
-                            </Button>
-                          )}
-                        </div>
-                      ))}
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
