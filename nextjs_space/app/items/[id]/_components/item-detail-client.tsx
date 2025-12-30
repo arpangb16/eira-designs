@@ -16,7 +16,7 @@ import Image from 'next/image'
 import { SVGEditor } from '@/components/svg-editor'
 import { SVGLayer, LayerChange } from '@/components/layer-inspector'
 import { toast } from 'sonner'
-import ConfigurationTab from './configuration-tab'
+import LayerConfigurationTab from './layer-configuration-tab'
 import VariantGalleryTab from './variant-gallery-tab'
 
 interface Template {
@@ -498,9 +498,9 @@ export function ItemDetailClient({
 
             <TabsContent value="configuration" className="mt-6">
               {item.template.svgPath ? (
-                <ConfigurationTab
+                <LayerConfigurationTab
                   itemId={item.id}
-                  schoolId={item.project.team.school.id}
+                  templateLayerData={item.template?.layerData || null}
                   onVariantsGenerated={() => {
                     setVariantRefreshTrigger(prev => prev + 1);
                     setActiveTab('variants');

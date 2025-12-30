@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(embellishments)
+    console.log('[EMBELLISHMENTS] Fetched embellishments:', embellishments.length)
+    return NextResponse.json({ embellishments })
   } catch (error) {
-    console.error('Error fetching embellishments:', error)
+    console.error('[EMBELLISHMENTS] Error fetching embellishments:', error)
     return NextResponse.json({ error: 'Failed to fetch embellishments' }, { status: 500 })
   }
 }
