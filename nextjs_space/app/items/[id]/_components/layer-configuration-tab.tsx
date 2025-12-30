@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Sparkles, Layers, Type, Palette, AlertCircle, Grid3x3, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Sparkles, Layers, Type, Palette, AlertCircle, Grid3x3, Image as ImageIcon, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ColorPicker } from '@/components/color-picker';
 
@@ -46,6 +49,15 @@ interface LayerConfig {
   value: string; // text content or hex color
 }
 
+interface AdditionalLayer {
+  id: string;
+  type: 'pattern' | 'embellishment';
+  resourceId: string;
+  resourceName: string;
+  position?: string; // e.g., 'body', 'sleeve', 'chest'
+  size?: number; // 50-200% for embellishments
+}
+
 interface LayerConfigurationTabProps {
   itemId: string;
   templateLayerData: string | null;
@@ -62,6 +74,7 @@ export default function LayerConfigurationTab({
   const [layerConfigs, setLayerConfigs] = useState<Record<string, LayerConfig>>({});
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [embellishments, setEmbellishments] = useState<Embellishment[]>([]);
+  const [additionalLayers, setAdditionalLayers] = useState<AdditionalLayer[]>([]);
 
   // Parse template layers
   useEffect(() => {
@@ -150,6 +163,52 @@ export default function LayerConfigurationTab({
     }));
   }
 
+  // Add pattern layer
+  function addPatternLayer(patternId: string) {
+    const pattern = patterns.find(p => p.id === patternId);
+    if (!pattern) return;
+
+    const newLayer: AdditionalLayer = {
+      id: `pattern_${Date.now()}`,
+      type: 'pattern',
+      resourceId: patternId,
+      resourceName: pattern.name,
+      position: 'body'
+    };
+    setAdditionalLayers(prev => [...prev, newLayer]);
+    toast.success(`Pattern "${pattern.name}" added`);
+  }
+
+  // Add embellishment layer
+  function addEmbellishmentLayer(embellishmentId: string) {
+    const embellishment = embellishments.find(e => e.id === embellishmentId);
+    if (!embellishment) return;
+
+    const newLayer: AdditionalLayer = {
+      id: `embellishment_${Date.now()}`,
+      type: 'embellishment',
+      resourceId: embellishmentId,
+      resourceName: embellishment.name,
+      position: 'chest',
+      size: 100
+    };
+    setAdditionalLayers(prev => [...prev, newLayer]);
+    toast.success(`Embellishment "${embellishment.name}" added`);
+  }
+
+  // Remove additional layer
+  function removeAdditionalLayer(layerId: string) {
+    setAdditionalLayers(prev => prev.filter(layer => layer.id !== layerId));
+    toast.success('Layer removed');
+  }
+
+  // Update additional layer property
+  function updateAdditionalLayer(layerId: string, updates: Partial<AdditionalLayer>) {
+    setAdditionalLayers(prev => prev.map(layer => 
+      layer.id === layerId ? { ...layer, ...updates } : layer
+    ));
+  }
+
   // Generate variants
   const handleGenerateVariants = async () => {
     setLoading(true);
@@ -162,10 +221,26 @@ export default function LayerConfigurationTab({
         value: config.value
       }));
 
+      // Extract patterns and embellishments from additional layers
+      const patternsToAdd = additionalLayers
+        .filter(layer => layer.type === 'pattern')
+        .map(layer => ({
+          patternId: layer.resourceId,
+          position: layer.position || 'body'
+        }));
+
+      const embellishmentsToAdd = additionalLayers
+        .filter(layer => layer.type === 'embellishment')
+        .map(layer => ({
+          embellishmentId: layer.resourceId,
+          position: layer.position || 'chest',
+          size: layer.size || 100
+        }));
+
       const config = {
         layers: layerModifications,
-        patterns: [],
-        embellishments: [],
+        patterns: patternsToAdd,
+        embellishments: embellishmentsToAdd,
       };
 
       console.log('[LayerConfig] Generating variants with config:', config);
@@ -299,41 +374,164 @@ export default function LayerConfigurationTab({
         </Card>
       )}
 
-      {/* Patterns Section (Coming Soon) */}
-      {patterns.length > 0 && (
-        <Card className="opacity-60">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Grid3x3 className="h-5 w-5" />
-              Patterns (Coming Soon)
-            </CardTitle>
-            <CardDescription>Add pattern layers to your design</CardDescription>
-          </CardHeader>
-          <CardContent>
+      {/* Patterns Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Grid3x3 className="h-5 w-5" />
+            Patterns ({additionalLayers.filter(l => l.type === 'pattern').length})
+          </CardTitle>
+          <CardDescription>Add pattern layers to overlay on your design</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Pattern Selection */}
+          {patterns.length > 0 ? (
+            <div className="flex gap-2">
+              <Select onValueChange={addPatternLayer}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select pattern to add..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {patterns.map((pattern) => (
+                    <SelectItem key={pattern.id} value={pattern.id}>
+                      {pattern.name} ({pattern.category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
             <p className="text-sm text-muted-foreground">
-              Pattern layer functionality will be available soon. You'll be able to add patterns as additional layers.
+              No patterns available. Add patterns from the Patterns page (right sidebar) first.
             </p>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* Embellishments Section (Coming Soon) */}
-      {embellishments.length > 0 && (
-        <Card className="opacity-60">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              Embellishments (Coming Soon)
-            </CardTitle>
-            <CardDescription>Add embellishment layers to your design</CardDescription>
-          </CardHeader>
-          <CardContent>
+          {/* Added Patterns */}
+          {additionalLayers.filter(l => l.type === 'pattern').map(layer => (
+            <Card key={layer.id} className="bg-muted/50">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{layer.resourceName}</Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeAdditionalLayer(layer.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Position/Area</Label>
+                  <Select 
+                    value={layer.position} 
+                    onValueChange={(value) => updateAdditionalLayer(layer.id, { position: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="body">Body</SelectItem>
+                      <SelectItem value="sleeve">Sleeve</SelectItem>
+                      <SelectItem value="inseam">Inseam</SelectItem>
+                      <SelectItem value="collar">Collar</SelectItem>
+                      <SelectItem value="cuff">Cuff</SelectItem>
+                      <SelectItem value="full">Full (All Over)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Embellishments Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5" />
+            Embellishments ({additionalLayers.filter(l => l.type === 'embellishment').length})
+          </CardTitle>
+          <CardDescription>Add embellishment layers (logos, graphics, etc.)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Embellishment Selection */}
+          {embellishments.length > 0 ? (
+            <div className="flex gap-2">
+              <Select onValueChange={addEmbellishmentLayer}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select embellishment to add..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {embellishments.map((embellishment) => (
+                    <SelectItem key={embellishment.id} value={embellishment.id}>
+                      {embellishment.name} ({embellishment.category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
             <p className="text-sm text-muted-foreground">
-              Embellishment layer functionality will be available soon. You'll be able to add embellishments as additional layers.
+              No embellishments available. Add embellishments from the Embellishments page (right sidebar) first.
             </p>
-          </CardContent>
-        </Card>
-      )}
+          )}
+
+          {/* Added Embellishments */}
+          {additionalLayers.filter(l => l.type === 'embellishment').map(layer => (
+            <Card key={layer.id} className="bg-muted/50">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{layer.resourceName}</Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeAdditionalLayer(layer.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Position</Label>
+                  <Select 
+                    value={layer.position} 
+                    onValueChange={(value) => updateAdditionalLayer(layer.id, { position: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="chest">Chest</SelectItem>
+                      <SelectItem value="back">Back</SelectItem>
+                      <SelectItem value="sleeve_left">Left Sleeve</SelectItem>
+                      <SelectItem value="sleeve_right">Right Sleeve</SelectItem>
+                      <SelectItem value="front_center">Front Center</SelectItem>
+                      <SelectItem value="collar">Collar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Size: {layer.size}%</Label>
+                  </div>
+                  <Slider
+                    value={[layer.size || 100]}
+                    onValueChange={([value]) => updateAdditionalLayer(layer.id, { size: value })}
+                    min={50}
+                    max={200}
+                    step={10}
+                    className="w-full"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Generate Button */}
       <div className="flex justify-end">
