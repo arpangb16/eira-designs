@@ -76,6 +76,54 @@ export default function LayerConfigurationTab({
   const [embellishments, setEmbellishments] = useState<Embellishment[]>([]);
   const [additionalLayers, setAdditionalLayers] = useState<AdditionalLayer[]>([]);
 
+  // Check if a layer or its children have fill colors
+  function hasColorInChildren(layer: SVGLayer): boolean {
+    if (layer.fill) return true;
+    if (layer.children) {
+      return layer.children.some(child => hasColorInChildren(child));
+    }
+    return false;
+  }
+  
+  // Get the first fill color from a layer or its children
+  function getFirstFillColor(layer: SVGLayer): string {
+    if (layer.fill) return layer.fill;
+    if (layer.children) {
+      for (const child of layer.children) {
+        const fill = getFirstFillColor(child);
+        if (fill) return fill;
+      }
+    }
+    return '#000000'; // default
+  }
+
+  // Flatten nested layers - keep top-level meaningful layers
+  function flattenLayers(layers: SVGLayer[]): SVGLayer[] {
+    const result: SVGLayer[] = [];
+    
+    layers.forEach(layer => {
+      // For top-level groups (like Body, Inseam, etc.), include them
+      // These are the meaningful layers users want to configure
+      if (layer.type === 'group' && layer.children && layer.children.length > 0) {
+        // Check if any children have fill colors (colorable)
+        const hasColorableChildren = hasColorInChildren(layer);
+        if (hasColorableChildren) {
+          result.push(layer);
+        }
+      }
+      // For text layers or layers with content, include them
+      else if (layer.type === 'text' || layer.content) {
+        result.push(layer);
+      }
+      // For leaf layers with fill, include them
+      else if (layer.fill && (!layer.children || layer.children.length === 0)) {
+        result.push(layer);
+      }
+    });
+    
+    return result;
+  }
+
   // Parse template layers
   useEffect(() => {
     if (templateLayerData) {
@@ -95,7 +143,7 @@ export default function LayerConfigurationTab({
             layerId: layer.id,
             layerName: layer.name,
             layerType: isTextLayer ? 'text' : 'graphic',
-            value: isTextLayer ? (layer.content || '') : (layer.fill || '#000000')
+            value: isTextLayer ? (layer.content || '') : getFirstFillColor(layer)
           };
         });
         setLayerConfigs(initialConfigs);
@@ -131,26 +179,6 @@ export default function LayerConfigurationTab({
 
     fetchLibraries();
   }, []);
-
-  // Flatten nested layers
-  function flattenLayers(layers: SVGLayer[]): SVGLayer[] {
-    const result: SVGLayer[] = [];
-    
-    function traverse(layer: SVGLayer) {
-      // Add current layer if it's a leaf node or has content
-      if (!layer.children || layer.children.length === 0 || layer.content || layer.fill) {
-        result.push(layer);
-      }
-      
-      // Traverse children
-      if (layer.children && layer.children.length > 0) {
-        layer.children.forEach(child => traverse(child));
-      }
-    }
-    
-    layers.forEach(layer => traverse(layer));
-    return result;
-  }
 
   // Update layer configuration
   function updateLayerConfig(layerId: string, value: string) {
