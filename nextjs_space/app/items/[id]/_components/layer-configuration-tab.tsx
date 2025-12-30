@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Sparkles, Layers, Type, Palette, AlertCircle, Grid3x3, Image as ImageIcon, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { ColorPicker } from '@/components/color-picker';
+import { EnhancedColorPicker } from '@/components/enhanced-color-picker';
 
 interface SVGLayer {
   id: string;
@@ -390,8 +390,8 @@ export default function LayerConfigurationTab({
 
               return (
                 <div key={layer.id} className="space-y-2">
-                  <ColorPicker
-                    label={`${config.layerName} (${layer.id})`}
+                  <EnhancedColorPicker
+                    label={config.layerName}
                     color={config.value}
                     onChange={(color) => updateLayerConfig(layer.id, color)}
                   />

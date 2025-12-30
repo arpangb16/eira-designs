@@ -7,12 +7,28 @@ import { JSDOM } from 'jsdom';
 
 export const dynamic = 'force-dynamic';
 
+interface LayerModification {
+  layerId: string;
+  layerName: string;
+  type: 'text' | 'graphic';
+  value: string; // hex color or text content
+}
+
+interface PatternToAdd {
+  patternId: string;
+  position: string;
+}
+
+interface EmbellishmentToAdd {
+  embellishmentId: string;
+  position: string;
+  size: number;
+}
+
 interface VariantConfig {
-  colors: { layerName: string; colorId: string }[];
-  patterns: { layerName: string; patternId: string }[];
-  logoSlots: { slotName: string; logoId: string; size: number }[];
-  fonts: { layerName: string; fontId: string }[];
-  teamNumber: boolean;
+  layers: LayerModification[];
+  patterns: PatternToAdd[];
+  embellishments: EmbellishmentToAdd[];
 }
 
 // Generate all combinations from the configuration
@@ -31,21 +47,28 @@ function applyColorToSVG(svgContent: string, layerName: string, hexColor: string
   const dom = new JSDOM(svgContent, { contentType: 'image/svg+xml' });
   const document = dom.window.document;
   
-  // Find elements with the matching layer name
-  const elements = document.querySelectorAll(`[id="${layerName}"], [data-name="${layerName}"]`);
+  // Find elements with the matching layer name (try ID first, then data-name)
+  let elements = document.querySelectorAll(`[id="${layerName}"]`);
+  if (elements.length === 0) {
+    elements = document.querySelectorAll(`[data-name="${layerName}"]`);
+  }
+  
+  console.log(`[applyColorToSVG] Found ${elements.length} elements for layer "${layerName}"`);
   
   elements.forEach((element) => {
-    // Apply fill color
-    element.setAttribute('fill', hexColor);
-    element.setAttribute('style', `fill: ${hexColor}`);
-    
-    // Also update child elements
-    const children = element.querySelectorAll('*');
-    children.forEach((child) => {
-      if (child.hasAttribute('fill') && child.getAttribute('fill') !== 'none') {
+    // For groups, update all child paths/shapes
+    const children = element.querySelectorAll('path, rect, circle, ellipse, polygon, polyline');
+    if (children.length > 0) {
+      console.log(`[applyColorToSVG] Updating ${children.length} children of "${layerName}"`);
+      children.forEach((child) => {
+        const currentFill = child.getAttribute('fill');
+        if (!currentFill || currentFill === 'none') return;
         child.setAttribute('fill', hexColor);
-      }
-    });
+      });
+    } else {
+      // If no children, update the element itself
+      element.setAttribute('fill', hexColor);
+    }
   });
   
   return dom.serialize();
@@ -171,24 +194,24 @@ export async function POST(
     const svgResponse = await fetch(svgUrl);
     let svgContent = await svgResponse.text();
 
-    // Fetch referenced entities (colors, patterns, fonts, logos)
-    const colorIds = config.colors.map((c) => c.colorId);
-    const patternIds = config.patterns.map((p) => p.patternId);
-    const fontIds = config.fonts.map((f) => f.fontId);
-    const logoIds = config.logoSlots.map((l) => l.logoId);
+    console.log('[VARIANT-GEN] Fetched SVG content, length:', svgContent.length);
+    console.log('[VARIANT-GEN] Config:', JSON.stringify(config, null, 2));
 
-    const [colors, patterns, fonts, logos] = await Promise.all([
-      prisma.color.findMany({ where: { id: { in: colorIds } } }),
-      prisma.pattern.findMany({ where: { id: { in: patternIds } } }),
-      prisma.font.findMany({ where: { id: { in: fontIds } } }),
-      prisma.schoolLogo.findMany({ where: { id: { in: logoIds } } }),
+    // Fetch referenced entities (patterns, embellishments)
+    const patternIds = config.patterns?.map((p) => p.patternId) || [];
+    const embellishmentIds = config.embellishments?.map((e) => e.embellishmentId) || [];
+
+    const [patterns, embellishments] = await Promise.all([
+      patternIds.length > 0 ? prisma.pattern.findMany({ where: { id: { in: patternIds } } }) : Promise.resolve([]),
+      embellishmentIds.length > 0 ? prisma.embellishment.findMany({ where: { id: { in: embellishmentIds } } }) : Promise.resolve([]),
     ]);
 
     // Create lookup maps
-    const colorMap = new Map(colors.map((c) => [c.id, c]));
     const patternMap = new Map(patterns.map((p) => [p.id, p]));
-    const fontMap = new Map(fonts.map((f) => [f.id, f]));
-    const logoMap = new Map(logos.map((l) => [l.id, l]));
+    const embellishmentMap = new Map(embellishments.map((e) => [e.id, e]));
+
+    console.log('[VARIANT-GEN] Found patterns:', patterns.length);
+    console.log('[VARIANT-GEN] Found embellishments:', embellishments.length);
 
     // Generate combinations (for now, just one variant)
     const combinations = generateCombinations(config, 20);
@@ -200,42 +223,39 @@ export async function POST(
       const combination = combinations[i];
       let variantSvg = svgContent;
 
-      // Apply colors
-      for (const colorConfig of combination.colors) {
-        const color = colorMap.get(colorConfig.colorId);
-        if (color) {
-          variantSvg = applyColorToSVG(variantSvg, colorConfig.layerName, color.hexCode);
+      console.log('[VARIANT-GEN] Processing variant', i + 1);
+
+      // Apply layer modifications (colors and text)
+      for (const layer of combination.layers || []) {
+        console.log('[VARIANT-GEN] Applying layer:', layer.layerName, layer.type, layer.value);
+        if (layer.type === 'graphic') {
+          // Apply color to graphic layer
+          variantSvg = applyColorToSVG(variantSvg, layer.layerName, layer.value);
+        } else if (layer.type === 'text') {
+          // Apply text content (for now, we'll just log it - full text editing needs more SVG manipulation)
+          console.log('[VARIANT-GEN] Text layer:', layer.layerName, '=', layer.value);
         }
       }
 
       // Apply patterns
-      for (const patternConfig of combination.patterns) {
+      for (const patternConfig of combination.patterns || []) {
         const pattern = patternMap.get(patternConfig.patternId);
         if (pattern && pattern.svgPath) {
-          const patternUrl = await getFileUrl(pattern.svgPath, true);
-          variantSvg = applyPatternToSVG(variantSvg, patternConfig.layerName, patternUrl);
+          console.log('[VARIANT-GEN] Applying pattern:', pattern.name);
+          const patternUrl = await getFileUrl(pattern.svgPath, pattern.svgIsPublic || false);
+          variantSvg = applyPatternToSVG(variantSvg, patternConfig.position, patternUrl);
         }
       }
 
-      // Apply logos
-      for (const logoConfig of combination.logoSlots) {
-        const logo = logoMap.get(logoConfig.logoId);
-        if (logo) {
-          const logoUrl = await getFileUrl(logo.logoPath, true);
-          variantSvg = applyLogoToSVG(variantSvg, logoConfig.slotName, logoUrl, logoConfig.size);
+      // Apply embellishments (similar to logos)
+      for (const embellishmentConfig of combination.embellishments || []) {
+        const embellishment = embellishmentMap.get(embellishmentConfig.embellishmentId);
+        if (embellishment && embellishment.svgPath) {
+          console.log('[VARIANT-GEN] Applying embellishment:', embellishment.name);
+          const embellishmentUrl = await getFileUrl(embellishment.svgPath, embellishment.svgIsPublic || false);
+          variantSvg = applyLogoToSVG(variantSvg, embellishmentConfig.position, embellishmentUrl, embellishmentConfig.size);
         }
       }
-
-      // Apply fonts
-      for (const fontConfig of combination.fonts) {
-        const font = fontMap.get(fontConfig.fontId);
-        if (font) {
-          variantSvg = applyFontToSVG(variantSvg, fontConfig.layerName, font.fontFamily);
-        }
-      }
-
-      // Toggle team number
-      variantSvg = toggleTeamNumberInSVG(variantSvg, combination.teamNumber);
 
       // Upload variant SVG to S3
       const variantFileName = `variant_${itemId}_${Date.now()}_${i}.svg`;
