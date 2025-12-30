@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Type, Palette, Image as ImageIcon, Grid3x3, Sparkles, Save, X, Plus } from 'lucide-react';
+import { Loader2, Type, Palette, Image as ImageIcon, Grid3x3, Sparkles, Save, X, Plus, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EnhancedColorPicker } from '@/components/enhanced-color-picker';
 import { LogoPicker } from '@/components/logo-picker';
@@ -94,7 +94,8 @@ export default function VisualEditorTab({
   const [embellishments, setEmbellishments] = useState<Embellishment[]>([]);
   const [patternLayers, setPatternLayers] = useState<PatternLayer[]>([]);
   const [embellishmentLayers, setEmbellishmentLayers] = useState<EmbellishmentLayer[]>([]);
-  const [previewSvg, setPreviewSvg] = useState<string>('');
+  const [originalSvg, setOriginalSvg] = useState<string>(''); // Keep original SVG
+  const [previewSvg, setPreviewSvg] = useState<string>(''); // Modified SVG for preview
   const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const [currentLogoLayerId, setCurrentLogoLayerId] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -102,6 +103,7 @@ export default function VisualEditorTab({
   const [saving, setSaving] = useState(false);
   const [variants, setVariants] = useState<DesignVariant[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
+  const [zoom, setZoom] = useState(100); // Zoom percentage
 
   // Helper functions
   function isLogoLayer(layer: SVGLayer): boolean {
@@ -229,7 +231,7 @@ export default function VisualEditorTab({
   // Update preview when configs change
   useEffect(() => {
     updatePreview();
-  }, [layerConfigs, patternLayers, embellishmentLayers]);
+  }, [layerConfigs, patternLayers, embellishmentLayers, originalSvg]);
 
   const fetchSvgPreview = async () => {
     try {
@@ -245,7 +247,8 @@ export default function VisualEditorTab({
         const { url } = await response.json();
         const svgResponse = await fetch(url);
         const svgContent = await svgResponse.text();
-        setPreviewSvg(svgContent);
+        setOriginalSvg(svgContent); // Store original
+        setPreviewSvg(svgContent);   // Initialize preview
       }
     } catch (error) {
       console.error('Failed to fetch SVG preview:', error);
@@ -291,26 +294,116 @@ export default function VisualEditorTab({
     }
   };
 
-  const updatePreview = useCallback(() => {
-    if (!previewSvg) return;
+  const updatePreview = useCallback(async () => {
+    if (!originalSvg) return;
 
-    let updatedSvg = previewSvg;
-
-    // Apply layer configurations
-    Object.values(layerConfigs).forEach(config => {
-      if (config.layerType === 'text') {
-        // Update text content
-        const textRegex = new RegExp(`(<text[^>]*id="${config.layerId}"[^>]*>)([^<]*)(</text>)`, 'g');
-        updatedSvg = updatedSvg.replace(textRegex, `$1${config.value}$3`);
-      } else if (config.layerType === 'graphic') {
-        // Update fill color
-        const fillRegex = new RegExp(`(<[^>]*id="${config.layerId}"[^>]*fill=")[^"]*`, 'g');
-        updatedSvg = updatedSvg.replace(fillRegex, `$1${config.value}`);
+    try {
+      // Always work from the original SVG to avoid cumulative changes
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
+      
+      // Apply layer configurations
+      for (const config of Object.values(layerConfigs)) {
+        // Find elements by ID
+        let elements = svgDoc.querySelectorAll(`[id="${config.layerId}"]`);
+        
+        // Also try data-name attribute
+        if (elements.length === 0) {
+          elements = svgDoc.querySelectorAll(`[data-name="${config.layerId}"]`);
+        }
+        
+        for (const element of Array.from(elements)) {
+          if (config.layerType === 'text') {
+            // Update text content
+            if (element.tagName.toLowerCase() === 'text' || element.tagName.toLowerCase() === 'tspan') {
+              element.textContent = config.value;
+            }
+          } else if (config.layerType === 'graphic') {
+            // Update fill color for groups and their children
+            const children = element.querySelectorAll('path, rect, circle, ellipse, polygon, polyline');
+            if (children.length > 0) {
+              // Update all children with fill colors
+              children.forEach(child => {
+                const currentFill = child.getAttribute('fill');
+                if (currentFill && currentFill !== 'none') {
+                  child.setAttribute('fill', config.value);
+                }
+              });
+            } else {
+              // Update the element itself
+              const currentFill = element.getAttribute('fill');
+              if (currentFill && currentFill !== 'none') {
+                element.setAttribute('fill', config.value);
+              }
+            }
+          } else if (config.layerType === 'logo' && config.value) {
+            // Handle logo embedding
+            try {
+              // Fetch the logo URL first
+              const urlResponse = await fetch('/api/upload/file-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  cloud_storage_path: config.value, 
+                  isPublic: config.logoIsPublic || true
+                }),
+              });
+              
+              if (urlResponse.ok) {
+                const { url: logoUrl } = await urlResponse.json();
+                
+                // Fetch the logo content
+                const logoResponse = await fetch(logoUrl);
+                const logoContent = await logoResponse.text();
+                
+                // Parse logo SVG
+                const logoDoc = parser.parseFromString(logoContent, 'image/svg+xml');
+                const logoSvg = logoDoc.querySelector('svg');
+                
+                if (logoSvg) {
+                  // Get the bounding box of the target element (with type assertion for SVG elements)
+                  let bbox = { x: 0, y: 0, width: 100, height: 100 };
+                  try {
+                    const svgElement = element as unknown as SVGGraphicsElement;
+                    if (typeof svgElement.getBBox === 'function') {
+                      bbox = svgElement.getBBox();
+                    }
+                  } catch (e) {
+                    // Use default bbox if getBBox fails
+                  }
+                  
+                  // Clear existing content
+                  while (element.firstChild) {
+                    element.removeChild(element.firstChild);
+                  }
+                  
+                  // Create an image element to embed the logo
+                  const image = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'image');
+                  image.setAttribute('href', logoUrl);
+                  image.setAttribute('x', bbox.x.toString());
+                  image.setAttribute('y', bbox.y.toString());
+                  image.setAttribute('width', bbox.width.toString());
+                  image.setAttribute('height', bbox.height.toString());
+                  image.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                  
+                  element.appendChild(image);
+                }
+              }
+            } catch (logoError) {
+              console.error('Failed to embed logo:', logoError);
+            }
+          }
+        }
       }
-    });
-
-    setPreviewSvg(updatedSvg);
-  }, [previewSvg, layerConfigs]);
+      
+      // Serialize back to string
+      const serializer = new XMLSerializer();
+      const updatedSvg = serializer.serializeToString(svgDoc);
+      setPreviewSvg(updatedSvg);
+    } catch (error) {
+      console.error('Failed to update preview:', error);
+    }
+  }, [originalSvg, layerConfigs]);
 
   const handleLayerConfigChange = (layerId: string, value: string, logoIsPublic?: boolean) => {
     setLayerConfigs(prev => ({
@@ -439,6 +532,19 @@ export default function VisualEditorTab({
     }
   };
 
+  // Zoom control handlers
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 25, 200));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 25, 50));
+  };
+
+  const handleZoomReset = () => {
+    setZoom(100);
+  };
+
   // Categorize layers - Filter only top-level layers, not all nested children
   const textLayers = layers.filter(layer => layerConfigs[layer.id]?.layerType === 'text');
   const graphicLayers = layers.filter(layer => layerConfigs[layer.id]?.layerType === 'graphic');
@@ -453,19 +559,56 @@ export default function VisualEditorTab({
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Live Preview</span>
-              <Button onClick={() => setSaveDialogOpen(true)}>
-                <Save className="w-4 h-4 mr-2" />
-                Save As Variant
-              </Button>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 bg-gray-100 rounded-md p-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleZoomOut}
+                    disabled={zoom <= 50}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs font-medium px-2 min-w-[50px] text-center">
+                    {zoom}%
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleZoomIn}
+                    disabled={zoom >= 200}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleZoomReset}
+                    className="h-8 w-8 p-0"
+                    title="Reset Zoom"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                <Button onClick={() => setSaveDialogOpen(true)}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save As Variant
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="relative w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden border">
+            <div className="relative w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-auto border">
               {previewSvg ? (
                 <div 
-                  className="w-full h-full p-4 flex items-center justify-center" 
+                  className="w-full h-full p-4 flex items-center justify-center transition-transform duration-200" 
                   dangerouslySetInnerHTML={{ __html: previewSvg }}
-                  style={{ overflow: 'hidden' }}
+                  style={{ 
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: 'center center'
+                  }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
