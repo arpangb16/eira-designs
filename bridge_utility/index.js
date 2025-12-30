@@ -107,6 +107,27 @@ async function fetchPendingJobs() {
 }
 
 /**
+ * Fetch pending variant jobs from the web app
+ */
+async function fetchPendingVariantJobs() {
+  try {
+    const response = await axios.get(`${WEB_APP_URL}/api/bridge/jobs`, {
+      params: { status: 'pending', limit: 10 },
+      timeout: 10000
+    });
+
+    return response.data.jobs || [];
+  } catch (error) {
+    if (error.response && error.response.status === 401) {
+      console.error('⚠️  Authentication issue - variant jobs may not be fetched correctly');
+    } else {
+      console.error('❌ Error fetching variant jobs:', error.message);
+    }
+    return [];
+  }
+}
+
+/**
  * Download a file from the web app
  */
 async function downloadFile(cloudStoragePath, isPublic, destinationPath) {
@@ -333,6 +354,120 @@ async function processDesignInstruction(instruction) {
 }
 
 /**
+ * Process a single variant job
+ */
+async function processVariantJob(job) {
+  const { id, variantId, variant } = job;
+  
+  console.log('\n🎯 Processing Variant Job:', id);
+  console.log('  Variant:', variant.variantName);
+  console.log('  Item:', variant.item.name);
+
+  try {
+    // Update job status to processing
+    await axios.patch(
+      `${WEB_APP_URL}/api/bridge/jobs/${id}`,
+      { status: 'processing' },
+      { timeout: 10000 }
+    );
+
+    // Download template file
+    const templateFileName = path.basename(variant.item.template.filePath);
+    const templatePath = path.join(TEMP_DIR, `template-${Date.now()}-${templateFileName}`);
+    
+    console.log('  📥 Downloading template...');
+    const downloadSuccess = await downloadFile(
+      variant.item.template.filePath,
+      variant.item.template.fileIsPublic,
+      templatePath
+    );
+
+    if (!downloadSuccess) {
+      throw new Error('Failed to download template');
+    }
+
+    // Parse variant configuration
+    let variantConfig;
+    try {
+      variantConfig = typeof variant.configuration === 'string' 
+        ? JSON.parse(variant.configuration) 
+        : variant.configuration;
+    } catch (e) {
+      console.error('  ⚠️  Failed to parse configuration:', e.message);
+      variantConfig = {};
+    }
+
+    // Prepare output base path
+    const timestamp = Date.now();
+    const outputBaseName = `${variant.variantName.replace(/[^a-z0-9]/gi, '_')}-${timestamp}`;
+    const outputBasePath = path.join(OUTPUT_DIR, outputBaseName);
+
+    // Execute Illustrator script
+    console.log('  🎨 Processing with Adobe Illustrator...');
+    await executeIllustratorScript(
+      path.join(__dirname, 'illustrator-script.jsx'),
+      templatePath,
+      outputBasePath,
+      variantConfig
+    );
+
+    // Upload the .ai file
+    console.log('  📤 Uploading .AI file...');
+    
+    const aiFilePath = `${outputBasePath}.ai`;
+    if (await fs.pathExists(aiFilePath)) {
+      const uploadedPath = await uploadFile(aiFilePath, variant.itemId, id, 'ai');
+      
+      // Mark job as completed
+      await axios.patch(
+        `${WEB_APP_URL}/api/bridge/jobs/${id}`,
+        { 
+          status: 'completed',
+          finalAiPath: uploadedPath,
+          finalAiIsPublic: false
+        },
+        { timeout: 10000 }
+      );
+      
+      console.log('  ✅ Variant job completed successfully!');
+      
+      // Clean up if configured
+      if (config.cleanup.keepOutputFiles === false) {
+        await fs.remove(aiFilePath);
+      }
+    } else {
+      throw new Error('.ai file not found after Illustrator processing');
+    }
+
+    // Clean up template file
+    if (config.cleanup.deleteTempFiles) {
+      await fs.remove(templatePath);
+    }
+
+    return true;
+
+  } catch (error) {
+    console.error('  ❌ Processing error:', error.message);
+    
+    // Update job status to failed
+    try {
+      await axios.patch(
+        `${WEB_APP_URL}/api/bridge/jobs/${id}`,
+        { 
+          status: 'failed',
+          errorMessage: error.message 
+        },
+        { timeout: 10000 }
+      );
+    } catch (updateError) {
+      console.error('  ❌ Failed to update status:', updateError.message);
+    }
+
+    return false;
+  }
+}
+
+/**
  * Main polling loop
  */
 async function pollForJobs() {
@@ -341,13 +476,25 @@ async function pollForJobs() {
   }
 
   try {
-    const jobs = await fetchPendingJobs();
+    // Fetch both types of jobs
+    const [designJobs, variantJobs] = await Promise.all([
+      fetchPendingJobs(),
+      fetchPendingVariantJobs()
+    ]);
 
-    if (jobs.length > 0) {
-      console.log(`\n🔔 Found ${jobs.length} pending job(s)`);
+    const totalJobs = designJobs.length + variantJobs.length;
+
+    if (totalJobs > 0) {
+      console.log(`\n🔔 Found ${totalJobs} pending job(s) (${designJobs.length} design instructions, ${variantJobs.length} variants)`);
       isProcessing = true;
 
-      for (const job of jobs) {
+      // Process variant jobs first (higher priority)
+      for (const job of variantJobs) {
+        await processVariantJob(job);
+      }
+
+      // Then process design instruction jobs
+      for (const job of designJobs) {
         await processDesignInstruction(job);
       }
 

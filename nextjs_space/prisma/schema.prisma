@@ -219,6 +219,7 @@ model DesignVariant {
   finalAiPath     String?
   finalAiIsPublic Boolean  @default(false)
   errorMessage    String?  @db.Text
+  bridgeJobs      BridgeJob[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
@@ -299,4 +300,22 @@ model Logo {
   @@index([teamId])
   @@index([projectId])
   @@index([itemId])
+}
+
+// Bridge Jobs (for Illustrator automation)
+model BridgeJob {
+  id                String   @id @default(cuid())
+  variantId         String
+  variant           DesignVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  status            String   @default("pending") // "pending" | "processing" | "completed" | "failed"
+  priority          Int      @default(0) // Higher priority jobs processed first
+  errorMessage      String?  @db.Text
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([variantId])
+  @@index([status])
+  @@index([priority, createdAt])
 }

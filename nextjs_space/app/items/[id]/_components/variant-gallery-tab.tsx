@@ -162,6 +162,45 @@ export default function VariantGalleryTab({ itemId, refreshTrigger }: VariantGal
     }
   };
 
+  const handleSendToBridge = async () => {
+    if (selectedVariants.size === 0) {
+      toast.error('No variants selected');
+      return;
+    }
+
+    setGeneratingFinalFiles(true);
+    try {
+      const response = await fetch('/api/bridge/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variantIds: Array.from(selectedVariants),
+          priority: 0,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(
+          `${data.created} variant${data.created > 1 ? 's' : ''} queued for processing! ${
+            data.skipped > 0 ? `(${data.skipped} already queued)` : ''
+          }`
+        );
+        
+        // Refresh variants to show updated status
+        await fetchVariants();
+      } else {
+        throw new Error(data.error || 'Failed to queue variants');
+      }
+    } catch (error) {
+      console.error('Error sending variants to bridge:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to queue variants for processing');
+    } finally {
+      setGeneratingFinalFiles(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'preview':
@@ -360,15 +399,41 @@ export default function VariantGalleryTab({ itemId, refreshTrigger }: VariantGal
 
       {/* Generate Final Files Button */}
       {selectedVariants.size > 0 && (
-        <div className="flex justify-center pt-4">
-          <Alert className="max-w-2xl">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Note:</strong> Final .AI file generation will be implemented in the bridge utility.
-              Selected variants will be processed by the Illustrator bridge to create production-ready files.
-            </AlertDescription>
-          </Alert>
-        </div>
+        <Card className="border-primary/50">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex-1">
+                <h4 className="font-semibold text-lg mb-2">Ready to Generate Final Files</h4>
+                <p className="text-sm text-muted-foreground">
+                  {selectedVariants.size} variant{selectedVariants.size > 1 ? 's' : ''} selected. 
+                  Click the button to send {selectedVariants.size > 1 ? 'them' : 'it'} to the Adobe Illustrator 
+                  bridge for processing into production-ready .AI files.
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  <strong>Note:</strong> Make sure your Adobe Illustrator bridge utility is running on your local machine.
+                </p>
+              </div>
+              <Button
+                size="lg"
+                onClick={handleSendToBridge}
+                disabled={generatingFinalFiles}
+                className="whitespace-nowrap"
+              >
+                {generatingFinalFiles ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Queueing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-5 w-5" />
+                    Generate Final Files
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
