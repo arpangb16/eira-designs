@@ -199,8 +199,7 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Templates</h1>
@@ -246,7 +245,9 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                       label=".AI Template File (Required)" 
                       accept=".ai,application/postscript,application/illustrator" 
                       isPublic={false} 
-                      maxSize={500} 
+                      maxSize={500}
+                      existingFileName={editingTemplate?.filePath ? editingTemplate.filePath.split('/').pop() : null}
+                      existingFilePath={editingTemplate?.filePath || null}
                       onUploadComplete={(cloud_storage_path, isPublic) => setFormData({ ...formData, filePath: cloud_storage_path, fileIsPublic: isPublic })} 
                     />
                     
@@ -255,7 +256,9 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                         label="SVG Preview File (Optional - for layer editing)" 
                         accept=".svg,image/svg+xml" 
                         isPublic={false} 
-                        maxSize={50} 
+                        maxSize={50}
+                        existingFileName={editingTemplate?.svgPath ? editingTemplate.svgPath.split('/').pop() : null}
+                        existingFilePath={editingTemplate?.svgPath || null}
                         onUploadComplete={handleSvgUpload} 
                       />
                       {parsingSvg && <p className="text-sm text-blue-600 mt-2">⏳ Parsing SVG layers...</p>}
@@ -349,7 +352,6 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
             ))}
           </div>
         )}
-      </main>
     </div>
   )
 }

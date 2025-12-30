@@ -13,6 +13,8 @@ interface FileUploadProps {
   label?: string
   isPublic?: boolean
   maxSize?: number // in MB
+  existingFileName?: string | null // Show existing file name
+  existingFilePath?: string | null // The cloud storage path of existing file
 }
 
 export function FileUpload({ 
@@ -20,13 +22,16 @@ export function FileUpload({
   accept = 'image/*',
   label = 'Upload File',
   isPublic = false,
-  maxSize = 100 // Default 100MB for single-part upload
+  maxSize = 100, // Default 100MB for single-part upload
+  existingFileName = null,
+  existingFilePath = null
 }: FileUploadProps) {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [keepExisting, setKeepExisting] = useState(!!existingFilePath)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,6 +46,7 @@ export function FileUpload({
     }
 
     setFile(selectedFile)
+    setKeepExisting(false) // New file selected, replace existing
     setError('')
     setSuccess(false)
   }
@@ -206,6 +212,21 @@ export function FileUpload({
     <div className="space-y-2">
       <Label>{label}</Label>
       <div className="space-y-2">
+        {/* Show existing file if available and no new file selected */}
+        {keepExisting && existingFileName && !file && (
+          <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-blue-900 truncate">
+                ✓ Current file: {existingFileName}
+              </p>
+              <p className="text-xs text-blue-600">
+                Upload a new file to replace
+              </p>
+            </div>
+            <CheckCircle2 className="w-5 h-5 text-blue-600" />
+          </div>
+        )}
+        
         <Input
           ref={fileInputRef}
           type="file"
