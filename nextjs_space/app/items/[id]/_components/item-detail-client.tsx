@@ -18,6 +18,7 @@ import { SVGLayer, LayerChange } from '@/components/layer-inspector'
 import { toast } from 'sonner'
 import LayerConfigurationTab from './layer-configuration-tab'
 import VariantGalleryTab from './variant-gallery-tab'
+import VisualEditorTab from './visual-editor-tab'
 
 interface Template {
   id: string
@@ -355,7 +356,7 @@ export function ItemDetailClient({
                 <FileImage className="w-4 h-4 mr-2" />
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="editor" disabled={!svgPreview || svgLayers.length === 0}>
+              <TabsTrigger value="editor" disabled={!item.template.svgPath || !item.template.layerData}>
                 <Wand2 className="w-4 h-4 mr-2" />
                 Visual Editor
               </TabsTrigger>
@@ -477,17 +478,18 @@ export function ItemDetailClient({
             </TabsContent>
 
             <TabsContent value="editor" className="mt-6">
-              {svgPreview && svgLayers.length > 0 ? (
-                <SVGEditor
-                  svgContent={svgPreview}
-                  layers={svgLayers}
-                  onSave={handleSaveLayerChanges}
+              {item.template.svgPath && item.template.layerData ? (
+                <VisualEditorTab
+                  itemId={item.id}
+                  templateLayerData={item.template.layerData}
+                  templateSvgPath={item.template.svgPath}
+                  templateSvgIsPublic={item.template.svgIsPublic}
                 />
               ) : (
                 <Card>
                   <CardContent className="text-center py-12">
-                    <Layers className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No SVG layers available</h3>
+                    <Wand2 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">Visual Editor Not Available</h3>
                     <p className="text-gray-600">
                       Upload an SVG file with named layers to use the visual editor
                     </p>
