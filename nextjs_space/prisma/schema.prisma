@@ -20,6 +20,9 @@ model User {
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
+  cart          Cart?
+  orders        Order[]
+  creatorDesigns CreatorDesign[]
 }
 
 model Account {
@@ -318,4 +321,116 @@ model BridgeJob {
   @@index([variantId])
   @@index([status])
   @@index([priority, createdAt])
+}
+
+// Creator Saved Designs
+model CreatorDesign {
+  id              String   @id @default(cuid())
+  name            String
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId        String?
+  teamId          String?
+  projectId       String?
+  itemId          String?
+  designData      String   @db.Text // JSON: shirt color, svg colors, text, logo, etc.
+  previewImage    String?  // Base64 or S3 path for preview
+  apparelType     String   @default("tshirt") // tshirt, singlet, shorts, etc.
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  cartItems       CartItem[]
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([teamId])
+  @@index([projectId])
+}
+
+// Shopping Cart
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id              String         @id @default(cuid())
+  cartId          String
+  cart            Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  creatorDesignId String?
+  creatorDesign   CreatorDesign? @relation(fields: [creatorDesignId], references: [id], onDelete: SetNull)
+  designName      String
+  designData      String         @db.Text // Copy of design at time of adding to cart
+  apparelType     String         @default("tshirt")
+  sizes           String         @db.Text // JSON: { "S": 2, "M": 5, "L": 3, ... }
+  unitPrice       Float          @default(25.00)
+  sendToTeam      Boolean        @default(false)
+  teamMembers     String?        @db.Text // JSON: [{ name, email }]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([cartId])
+}
+
+// Orders
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          String        @default("pending") // pending, processing, shipped, delivered, cancelled
+  subtotal        Float
+  shippingCost    Float
+  total           Float
+  shippingMethod  String        // "free" | "expedite"
+  shippingType    String        // "single" | "multiple"
+  items           OrderItem[]
+  addresses       OrderAddress[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  designName      String
+  designData      String        @db.Text
+  apparelType     String
+  sizes           String        @db.Text // JSON: { "S": 2, "M": 5, ... }
+  unitPrice       Float
+  quantity        Int           // Total quantity across all sizes
+  totalPrice      Float
+  sendToTeam      Boolean       @default(false)
+  teamMembers     String?       @db.Text
+  addressId       String?
+  address         OrderAddress? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+
+  @@index([orderId])
+}
+
+model OrderAddress {
+  id          String      @id @default(cuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name        String
+  street      String
+  city        String
+  state       String
+  zipCode     String
+  country     String      @default("USA")
+  phone       String?
+  isDefault   Boolean     @default(false)
+  items       OrderItem[]
+  createdAt   DateTime    @default(now())
+
+  @@index([orderId])
 }

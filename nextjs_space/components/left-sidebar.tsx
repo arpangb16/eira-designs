@@ -13,6 +13,8 @@ import {
   Users,
   FolderKanban,
   Shirt,
+  ShoppingCart,
+  ClipboardList,
   Menu,
   ChevronLeft,
   ChevronRight,
@@ -24,6 +26,8 @@ const navigation = [
   { name: 'Teams', href: '/teams', icon: Users },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Items', href: '/items', icon: Shirt },
+  { name: 'Cart', href: '/cart', icon: ShoppingCart },
+  { name: 'Orders', href: '/orders', icon: ClipboardList },
 ];
 
 export function LeftSidebar() {
