@@ -676,30 +676,30 @@ export default function CreatorClient() {
             </div>
             <div>
               <Label>School (Optional)</Label>
-              <Select value={selectedSchool} onValueChange={(v) => { setSelectedSchool(v); setSelectedTeam(''); setSelectedProject(''); }}>
+              <Select value={selectedSchool || 'none'} onValueChange={(v) => { setSelectedSchool(v === 'none' ? '' : v); setSelectedTeam(''); setSelectedProject(''); }}>
                 <SelectTrigger><SelectValue placeholder="Select school" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {schools.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Team (Optional)</Label>
-              <Select value={selectedTeam} onValueChange={(v) => { setSelectedTeam(v); setSelectedProject(''); }}>
+              <Select value={selectedTeam || 'none'} onValueChange={(v) => { setSelectedTeam(v === 'none' ? '' : v); setSelectedProject(''); }}>
                 <SelectTrigger><SelectValue placeholder="Select team" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {filteredTeams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Project (Optional)</Label>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
+              <Select value={selectedProject || 'none'} onValueChange={(v) => setSelectedProject(v === 'none' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {filteredProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
