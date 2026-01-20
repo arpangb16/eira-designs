@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProjectsPage() {
   await requireAdmin()
-  if (!session) redirect('/login')
 
   const [projects, teams] = await Promise.all([
     prisma.project.findMany({

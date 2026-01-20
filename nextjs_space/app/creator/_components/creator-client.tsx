@@ -242,6 +242,13 @@ export default function CreatorClient() {
     []
   );
 
+  // Draw t-shirt to modal preview canvas when design opens or color changes
+  useEffect(() => {
+    if (selectedDesign?.image && previewCanvasRef.current && modalOpen) {
+      applyColorToCanvas(selectedDesign.image, currentState.shirtColor, previewCanvasRef.current);
+    }
+  }, [selectedDesign, currentState.shirtColor, modalOpen, applyColorToCanvas]);
+
   // Apply SVG color changes
   const getModifiedSvg = useCallback(
     (originalSvg: string, state: DesignState) => {

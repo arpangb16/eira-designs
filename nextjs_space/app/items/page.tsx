@@ -6,8 +6,7 @@ import { prisma } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 export default async function ItemsPage() {
-  await requireAdmin()
-  if (!session) redirect('/login')
+  await requireAdmin();
 
   const [items, projects, templates] = await Promise.all([
     prisma.item.findMany({

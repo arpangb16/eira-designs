@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin-check'
 import { TeamDetailClient } from './_components/team-detail-client'
 import { prisma } from '@/lib/db'
@@ -27,7 +28,8 @@ export default async function TeamDetailPage({
   })
 
   if (!team) {
-    redirect('/teams')
+    redirect('/teams');
+    return null;
   }
 
   // Serialize dates

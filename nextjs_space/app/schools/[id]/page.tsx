@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin-check'
 import { SchoolDetailClient } from './_components/school-detail-client'
 import { prisma } from '@/lib/db'
@@ -26,7 +27,8 @@ export default async function SchoolDetailPage({
   })
 
   if (!school) {
-    redirect('/schools')
+    redirect('/schools');
+    return null;
   }
 
   // Serialize dates

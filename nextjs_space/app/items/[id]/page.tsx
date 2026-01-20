@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin-check'
 import { ItemDetailClient } from './_components/item-detail-client'
 import { prisma } from '@/lib/db'
@@ -34,7 +35,8 @@ export default async function ItemDetailPage({
   })
 
   if (!item) {
-    redirect('/items')
+    redirect('/items');
+    return null;
   }
 
   // Fetch all projects and templates for the edit form

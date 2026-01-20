@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin-check'
 import { ProjectDetailClient } from './_components/project-detail-client'
 import { prisma } from '@/lib/db'
@@ -35,7 +36,8 @@ export default async function ProjectDetailPage({
   })
 
   if (!project) {
-    redirect('/projects')
+    redirect('/projects');
+    return null;
   }
 
   // Fetch all templates for the add item dialog

@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function TeamsPage() {
   await requireAdmin()
-  if (!session) redirect('/login')
 
   const [teams, schools] = await Promise.all([
     prisma.team.findMany({
