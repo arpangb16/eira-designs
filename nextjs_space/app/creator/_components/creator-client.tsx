@@ -526,11 +526,14 @@ export default function CreatorClient() {
                 <canvas ref={previewCanvasRef} className="max-w-full max-h-full object-contain" />
                 {svgContent && (
                   <div
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    className="absolute pointer-events-none"
                     style={{ 
-                      padding: '15%',
-                      transform: `scale(${getDesignScale(currentState)})`,
-                      transition: 'transform 0.2s ease-out'
+                      top: '25%',
+                      left: '50%',
+                      transform: `translateX(-50%) scale(${getDesignScale(currentState) * 0.4})`,
+                      transition: 'transform 0.2s ease-out',
+                      width: '50%',
+                      maxWidth: '120px'
                     }}
                     dangerouslySetInnerHTML={{ __html: getModifiedSvg(svgContent, currentState) }}
                   />

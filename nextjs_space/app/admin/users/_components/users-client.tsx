@@ -108,17 +108,17 @@ export function UsersClient({ initialUsers, currentUserId }: UsersClientProps) {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-lg">{user.name || 'No name'}</h3>
+                        <h3 className="font-semibold text-lg text-gray-900">{user.name || 'No name'}</h3>
                         {user.id === currentUserId && (
-                          <Badge variant="outline">You</Badge>
+                          <Badge className="border-gray-400 text-gray-700 bg-white">You</Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
+                      <div className="flex items-center gap-4 text-sm text-gray-700">
+                        <span className="flex items-center gap-1 text-gray-700">
                           <Mail className="h-3 w-3" />
                           {user.email}
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 text-gray-700">
                           <Calendar className="h-3 w-3" />
                           Joined {new Date(user.createdAt).toLocaleDateString()}
                         </span>
@@ -127,8 +127,7 @@ export function UsersClient({ initialUsers, currentUserId }: UsersClientProps) {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge 
-                      variant={user.role === 'ADMIN' ? 'default' : 'outline'} 
-                      className={`px-3 py-1 ${user.role !== 'ADMIN' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}`}
+                      className={`px-3 py-1 ${user.role === 'ADMIN' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 border-gray-400'}`}
                     >
                       {user.role === 'ADMIN' ? (
                         <><Shield className="h-3 w-3 mr-1" /> Admin</>
