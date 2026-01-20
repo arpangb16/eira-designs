@@ -246,16 +246,24 @@ export default function CreatorClient() {
   const getModifiedSvg = useCallback(
     (originalSvg: string, state: DesignState) => {
       let svg = originalSvg;
+      // Apply color changes
       svg = svg.replace(/#ffcd00/gi, state.svgColors.accentColor);
       svg = svg.replace(/#9ed9dd/gi, state.svgColors.text1FillColor);
       svg = svg.replace(/#76bc21/gi, state.svgColors.text1OutlineColor);
       svg = svg.replace(/#cfc393/gi, state.svgColors.text2Color);
+      // Apply text content changes
       svg = svg.replace(/HARLEM/g, state.textContent.text1);
       svg = svg.replace(/WRESTLING/g, state.textContent.text2);
       return svg;
     },
     []
   );
+
+  // Calculate design scale based on text size
+  const getDesignScale = useCallback((state: DesignState) => {
+    const avgScale = (state.textSize.text1 + state.textSize.text2) / 200;
+    return avgScale;
+  }, []);
 
   // Open design modal
   const openDesign = (design: typeof tshirtDesigns[0]) => {
@@ -514,7 +522,11 @@ export default function CreatorClient() {
                 {svgContent && (
                   <div
                     className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                    style={{ padding: '15%' }}
+                    style={{ 
+                      padding: '15%',
+                      transform: `scale(${getDesignScale(currentState)})`,
+                      transition: 'transform 0.2s ease-out'
+                    }}
                     dangerouslySetInnerHTML={{ __html: getModifiedSvg(svgContent, currentState) }}
                   />
                 )}
