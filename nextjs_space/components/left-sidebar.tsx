@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -18,9 +19,11 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  Shield,
+  Wand2,
 } from 'lucide-react';
 
-const navigation = [
+const adminNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Schools', href: '/schools', icon: School },
   { name: 'Teams', href: '/teams', icon: Users },
@@ -28,18 +31,30 @@ const navigation = [
   { name: 'Items', href: '/items', icon: Shirt },
   { name: 'Cart', href: '/cart', icon: ShoppingCart },
   { name: 'Orders', href: '/orders', icon: ClipboardList },
+  { name: 'User Management', href: '/admin/users', icon: Shield },
+];
+
+const userNavigation = [
+  { name: 'Creator', href: '/creator', icon: Wand2 },
+  { name: 'Cart', href: '/cart', icon: ShoppingCart },
+  { name: 'Orders', href: '/orders', icon: ClipboardList },
 ];
 
 export function LeftSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { data: session } = useSession() || {};
+  
+  const isAdmin = session?.user?.role === 'ADMIN';
+  const navigation = isAdmin ? adminNavigation : userNavigation;
+  const homeLink = isAdmin ? '/dashboard' : '/creator';
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b px-4">
         {!collapsed && (
-          <Link href="/dashboard" className="flex items-center space-x-2">
+          <Link href={homeLink} className="flex items-center space-x-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-orange-500">
               <Shirt className="h-5 w-5 text-white" />
             </div>

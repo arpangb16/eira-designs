@@ -1,6 +1,4 @@
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth-options'
+import { requireAdmin } from '@/lib/admin-check'
 import { SchoolDetailClient } from './_components/school-detail-client'
 import { prisma } from '@/lib/db'
 
@@ -11,10 +9,7 @@ export default async function SchoolDetailPage({
 }: {
   params: { id: string }
 }) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
+  await requireAdmin()
 
   const school = await prisma.school.findUnique({
     where: { id: params.id },

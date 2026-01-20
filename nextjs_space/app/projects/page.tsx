@@ -1,6 +1,4 @@
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth-options'
+import { requireAdmin } from '@/lib/admin-check'
 import { ProjectsClient } from './_components/projects-client'
 
 import { prisma } from '@/lib/db'
@@ -8,7 +6,7 @@ import { prisma } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 export default async function ProjectsPage() {
-  const session = await getServerSession(authOptions)
+  await requireAdmin()
   if (!session) redirect('/login')
 
   const [projects, teams] = await Promise.all([
