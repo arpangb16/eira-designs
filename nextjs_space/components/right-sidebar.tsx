@@ -13,6 +13,7 @@ import {
   Grid3x3,
   Palette,
   Sparkles,
+  Wand2,
   Menu,
   ChevronLeft,
   ChevronRight,
@@ -24,6 +25,7 @@ const navigation = [
   { name: 'Patterns', href: '/patterns', icon: Grid3x3 },
   { name: 'Colors', href: '/colors', icon: Palette },
   { name: 'Embellishments', href: '/embellishments', icon: Sparkles },
+  { name: 'Creator', href: '/creator', icon: Wand2 },
 ];
 
 export function RightSidebar() {
