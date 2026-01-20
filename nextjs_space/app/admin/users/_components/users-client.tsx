@@ -113,7 +113,7 @@ export function UsersClient({ initialUsers, currentUserId }: UsersClientProps) {
                           <Badge variant="outline">You</Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
                         <span className="flex items-center gap-1">
                           <Mail className="h-3 w-3" />
                           {user.email}
@@ -126,7 +126,10 @@ export function UsersClient({ initialUsers, currentUserId }: UsersClientProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'} className="px-3 py-1">
+                    <Badge 
+                      variant={user.role === 'ADMIN' ? 'default' : 'outline'} 
+                      className={`px-3 py-1 ${user.role !== 'ADMIN' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}`}
+                    >
                       {user.role === 'ADMIN' ? (
                         <><Shield className="h-3 w-3 mr-1" /> Admin</>
                       ) : (

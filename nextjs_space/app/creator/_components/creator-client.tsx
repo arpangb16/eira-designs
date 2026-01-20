@@ -449,8 +449,7 @@ export default function CreatorClient() {
     const state = designStates[design.id] || defaultDesignState;
     return (
       <div
-        className="relative w-full h-64 flex items-center justify-center overflow-hidden"
-        style={{ backgroundColor: state.shirtColor === '#FFFFFF' ? '#f8f9fa' : state.shirtColor }}
+        className="relative w-full h-64 flex items-center justify-center overflow-hidden bg-gray-100"
       >
         <canvas
           ref={(el) => {
@@ -522,8 +521,7 @@ export default function CreatorClient() {
                 <ImageIcon className="h-4 w-4" /> Preview
               </h3>
               <div
-                className="relative w-full aspect-square flex items-center justify-center rounded-lg overflow-hidden"
-                style={{ backgroundColor: currentState.shirtColor === '#FFFFFF' ? '#f0f0f0' : currentState.shirtColor }}
+                className="relative w-full aspect-square flex items-center justify-center rounded-lg overflow-hidden bg-gray-200"
               >
                 <canvas ref={previewCanvasRef} className="max-w-full max-h-full object-contain" />
                 {svgContent && (
