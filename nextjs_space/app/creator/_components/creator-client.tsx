@@ -417,7 +417,7 @@ export default function CreatorClient() {
         shirtImg.src = selectedDesign.image;
       });
       
-      // Draw the SVG design on top
+      // Draw the SVG design on top with multiply blend mode for realistic "printed on fabric" look
       const modifiedSvg = getModifiedSvg(svgContent, currentState);
       const svgBlob = new Blob([modifiedSvg], { type: 'image/svg+xml;charset=utf-8' });
       const svgUrl = URL.createObjectURL(svgBlob);
@@ -431,7 +431,10 @@ export default function CreatorClient() {
           const designX = (exportWidth - designWidth) / 2;
           const designY = exportHeight * 0.18;
           
+          // Use multiply blend mode for realistic print effect
+          ctx.globalCompositeOperation = 'multiply';
           ctx.drawImage(svgImg, designX, designY, designWidth, designHeight);
+          ctx.globalCompositeOperation = 'source-over'; // Reset to default
           URL.revokeObjectURL(svgUrl);
           resolve();
         };
@@ -678,7 +681,7 @@ export default function CreatorClient() {
               </h3>
               <div
                 id="mockup-preview"
-                className="relative w-full aspect-square flex items-center justify-center rounded-lg overflow-hidden bg-gray-200"
+                className="relative w-full aspect-square flex items-center justify-center rounded-lg overflow-hidden bg-white"
               >
                 <canvas ref={previewCanvasRef} className="max-w-full max-h-full object-contain" />
                 {svgContent && (
@@ -691,6 +694,7 @@ export default function CreatorClient() {
                       width: '55%',
                       maxWidth: '280px',
                       transition: 'all 0.2s ease-out',
+                      mixBlendMode: 'multiply',
                     }}
                     dangerouslySetInnerHTML={{ __html: getModifiedSvg(svgContent, currentState) }}
                   />
