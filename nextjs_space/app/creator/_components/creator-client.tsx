@@ -26,6 +26,8 @@ import {
   Minus,
   Users,
   Mail,
+  Download,
+  Loader2,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
@@ -102,7 +104,7 @@ const defaultDesignState: DesignState = {
   svgColors: {
     accentColor: '#ffcd00',
     text1FillColor: '#9ed9dd',
-    text1OutlineColor: '#76bc21',
+    text1OutlineColor: '#f97fb5', // Fixed: matches actual SVG stroke color
     text2Color: '#cfc393',
   },
   textContent: {
@@ -125,7 +127,9 @@ export default function CreatorClient() {
   const [currentState, setCurrentState] = useState<DesignState>(defaultDesignState);
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const exportCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exporting, setExporting] = useState(false);
   
   // Save dialog state
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -249,18 +253,32 @@ export default function CreatorClient() {
     }
   }, [selectedDesign, currentState.shirtColor, modalOpen, applyColorToCanvas]);
 
-  // Apply SVG color changes
+  // Apply SVG color and text changes
   const getModifiedSvg = useCallback(
     (originalSvg: string, state: DesignState) => {
       let svg = originalSvg;
+      
       // Apply color changes
-      svg = svg.replace(/#ffcd00/gi, state.svgColors.accentColor);
-      svg = svg.replace(/#9ed9dd/gi, state.svgColors.text1FillColor);
-      svg = svg.replace(/#76bc21/gi, state.svgColors.text1OutlineColor);
-      svg = svg.replace(/#cfc393/gi, state.svgColors.text2Color);
+      svg = svg.replace(/#ffcd00/gi, state.svgColors.accentColor); // Accent color
+      svg = svg.replace(/#9ed9dd/gi, state.svgColors.text1FillColor); // Text 1 fill (st6)
+      svg = svg.replace(/#f97fb5/gi, state.svgColors.text1OutlineColor); // Text 1 stroke (st5)
+      svg = svg.replace(/#cfc393/gi, state.svgColors.text2Color); // Text 2 color (st1)
+      
       // Apply text content changes
-      svg = svg.replace(/HARLEM/g, state.textContent.text1);
-      svg = svg.replace(/WRESTLING/g, state.textContent.text2);
+      svg = svg.replace(/>HARLEM</g, `>${state.textContent.text1}<`);
+      svg = svg.replace(/>WRESTLING</g, `>${state.textContent.text2}<`);
+      
+      // Apply text size changes - modify font-size in style definitions
+      // Text 1 (Impact font, base size 278.9px)
+      const text1Scale = state.textSize.text1 / 100;
+      const text1FontSize = Math.round(278.9 * text1Scale);
+      svg = svg.replace(/font-size:\s*278\.9px/g, `font-size: ${text1FontSize}px`);
+      
+      // Text 2 (Evogria font, base size 72.4px)
+      const text2Scale = state.textSize.text2 / 100;
+      const text2FontSize = Math.round(72.4 * text2Scale);
+      svg = svg.replace(/font-size:\s*72\.4px/g, `font-size: ${text2FontSize}px`);
+      
       return svg;
     },
     []
@@ -317,6 +335,144 @@ export default function CreatorClient() {
   const removeLogo = () => {
     setCurrentState((prev) => ({ ...prev, logo: null }));
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Export PNG with shirt composite
+  const exportPNG = async () => {
+    if (!selectedDesign?.image || !svgContent) {
+      toast({ title: 'Error', description: 'No design to export', variant: 'destructive' });
+      return;
+    }
+    
+    setExporting(true);
+    try {
+      const canvas = exportCanvasRef.current;
+      if (!canvas) throw new Error('Export canvas not found');
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Cannot get canvas context');
+      
+      // Set high resolution for export
+      const exportWidth = 1200;
+      const exportHeight = 1200;
+      canvas.width = exportWidth;
+      canvas.height = exportHeight;
+      
+      // Clear canvas
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, exportWidth, exportHeight);
+      
+      // Load and draw the shirt with color
+      const shirtImg = new Image();
+      shirtImg.crossOrigin = 'anonymous';
+      
+      await new Promise<void>((resolve, reject) => {
+        shirtImg.onload = () => {
+          // Draw shirt centered
+          const shirtScale = Math.min(exportWidth / shirtImg.width, exportHeight / shirtImg.height) * 0.9;
+          const shirtW = shirtImg.width * shirtScale;
+          const shirtH = shirtImg.height * shirtScale;
+          const shirtX = (exportWidth - shirtW) / 2;
+          const shirtY = (exportHeight - shirtH) / 2;
+          
+          // Create a temp canvas for color tinting
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = shirtImg.width;
+          tempCanvas.height = shirtImg.height;
+          const tempCtx = tempCanvas.getContext('2d');
+          if (!tempCtx) { resolve(); return; }
+          
+          tempCtx.drawImage(shirtImg, 0, 0);
+          
+          // Apply color tint
+          const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+          const data = imageData.data;
+          const targetR = parseInt(currentState.shirtColor.slice(1, 3), 16);
+          const targetG = parseInt(currentState.shirtColor.slice(3, 5), 16);
+          const targetB = parseInt(currentState.shirtColor.slice(5, 7), 16);
+          
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+            if (a > 10) {
+              const brightness = (r + g + b) / 3;
+              const max = Math.max(r, g, b);
+              const min = Math.min(r, g, b);
+              const saturation = max === 0 ? 0 : (max - min) / max;
+              if (brightness > 70 && saturation < 0.3) {
+                const brightnessRatio = brightness / 255;
+                const blendFactor = 0.88;
+                data[i] = Math.min(255, Math.max(0, Math.round(targetR * brightnessRatio * blendFactor + r * (1 - blendFactor))));
+                data[i + 1] = Math.min(255, Math.max(0, Math.round(targetG * brightnessRatio * blendFactor + g * (1 - blendFactor))));
+                data[i + 2] = Math.min(255, Math.max(0, Math.round(targetB * brightnessRatio * blendFactor + b * (1 - blendFactor))));
+              }
+            }
+          }
+          tempCtx.putImageData(imageData, 0, 0);
+          
+          // Draw tinted shirt to main canvas
+          ctx.drawImage(tempCanvas, shirtX, shirtY, shirtW, shirtH);
+          resolve();
+        };
+        shirtImg.onerror = () => reject(new Error('Failed to load shirt image'));
+        shirtImg.src = selectedDesign.image;
+      });
+      
+      // Draw the SVG design on top
+      const modifiedSvg = getModifiedSvg(svgContent, currentState);
+      const svgBlob = new Blob([modifiedSvg], { type: 'image/svg+xml;charset=utf-8' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      
+      const svgImg = new Image();
+      await new Promise<void>((resolve, reject) => {
+        svgImg.onload = () => {
+          // Position design on chest area (18% from top, centered, 55% width)
+          const designWidth = exportWidth * 0.55;
+          const designHeight = (svgImg.height / svgImg.width) * designWidth;
+          const designX = (exportWidth - designWidth) / 2;
+          const designY = exportHeight * 0.18;
+          
+          ctx.drawImage(svgImg, designX, designY, designWidth, designHeight);
+          URL.revokeObjectURL(svgUrl);
+          resolve();
+        };
+        svgImg.onerror = () => {
+          URL.revokeObjectURL(svgUrl);
+          reject(new Error('Failed to load SVG'));
+        };
+        svgImg.src = svgUrl;
+      });
+      
+      // Draw logo if present
+      const logoSrc = currentState.logo;
+      if (logoSrc) {
+        const logoImg = new Image();
+        await new Promise<void>((resolve) => {
+          logoImg.onload = () => {
+            const logoSize = 100;
+            const logoX = (exportWidth - logoSize) / 2;
+            const logoY = exportHeight - 120;
+            ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+            resolve();
+          };
+          logoImg.onerror = () => resolve();
+          logoImg.src = logoSrc;
+        });
+      }
+      
+      // Download the PNG
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `${selectedDesign.title || 'design'}_mockup.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      toast({ title: 'Success', description: 'Design exported as PNG!' });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({ title: 'Export Failed', description: 'Could not export the design', variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Open save dialog
@@ -521,19 +677,20 @@ export default function CreatorClient() {
                 <ImageIcon className="h-4 w-4" /> Preview
               </h3>
               <div
+                id="mockup-preview"
                 className="relative w-full aspect-square flex items-center justify-center rounded-lg overflow-hidden bg-gray-200"
               >
                 <canvas ref={previewCanvasRef} className="max-w-full max-h-full object-contain" />
                 {svgContent && (
                   <div
-                    className="absolute pointer-events-none"
+                    className="absolute pointer-events-none design-overlay"
                     style={{ 
-                      top: '25%',
+                      top: '18%',
                       left: '50%',
-                      transform: `translateX(-50%) scale(${getDesignScale(currentState) * 0.4})`,
-                      transition: 'transform 0.2s ease-out',
-                      width: '50%',
-                      maxWidth: '120px'
+                      transform: 'translateX(-50%)',
+                      width: '55%',
+                      maxWidth: '280px',
+                      transition: 'all 0.2s ease-out',
                     }}
                     dangerouslySetInnerHTML={{ __html: getModifiedSvg(svgContent, currentState) }}
                   />
@@ -671,6 +828,17 @@ export default function CreatorClient() {
 
               {/* Action Buttons */}
               <div className="mt-6 pt-4 border-t space-y-2">
+                <Button 
+                  onClick={exportPNG} 
+                  className="w-full bg-green-600 hover:bg-green-700" 
+                  disabled={exporting || !svgContent}
+                >
+                  {exporting ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Exporting...</>
+                  ) : (
+                    <><Download className="h-4 w-4 mr-2" /> Export PNG Mockup</>
+                  )}
+                </Button>
                 <Button onClick={openSaveDialog} className="w-full" variant="outline">
                   <Save className="h-4 w-4 mr-2" /> Save Design
                 </Button>
@@ -815,6 +983,9 @@ export default function CreatorClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Hidden canvas for PNG export */}
+      <canvas ref={exportCanvasRef} style={{ display: 'none' }} />
     </div>
   );
 }
