@@ -425,11 +425,11 @@ export default function CreatorClient() {
       const svgImg = new Image();
       await new Promise<void>((resolve, reject) => {
         svgImg.onload = () => {
-          // Position design on chest area (18% from top, centered, 55% width)
-          const designWidth = exportWidth * 0.55;
+          // Position design on chest area (25% from top, centered, 35% width) - smaller like CustomInk
+          const designWidth = exportWidth * 0.35;
           const designHeight = (svgImg.height / svgImg.width) * designWidth;
           const designX = (exportWidth - designWidth) / 2;
-          const designY = exportHeight * 0.18;
+          const designY = exportHeight * 0.25;
           
           // Use multiply blend mode for realistic print effect
           ctx.globalCompositeOperation = 'multiply';
@@ -688,11 +688,11 @@ export default function CreatorClient() {
                   <div
                     className="absolute pointer-events-none design-overlay"
                     style={{ 
-                      top: '18%',
+                      top: '25%',
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      width: '55%',
-                      maxWidth: '280px',
+                      width: '35%',
+                      maxWidth: '160px',
                       transition: 'all 0.2s ease-out',
                       mixBlendMode: 'multiply',
                     }}
