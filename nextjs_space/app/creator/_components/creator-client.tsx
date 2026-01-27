@@ -401,10 +401,7 @@ export default function CreatorClient() {
                 onClick={() => selectTemplate(template)}
               >
                 <div className="aspect-square bg-gray-100 relative">
-                  <div
-                    className="absolute inset-4"
-                    dangerouslySetInnerHTML={{ __html: '' }}
-                  >
+                  <div className="absolute inset-4">
                     <img
                       src={template.svgPath}
                       alt={template.name}
