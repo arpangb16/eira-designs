@@ -269,50 +269,51 @@ export default function CreatorClient() {
       canvas.width = size;
       canvas.height = size;
       
-      // Fill with shirt color
-      ctx.fillStyle = editorState.shirtColor;
+      // Start with white background
+      ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, size, size);
       
-      // Load and draw t-shirt
+      // Load mask image first
+      const maskImg = new Image();
+      maskImg.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        maskImg.onload = () => resolve();
+        maskImg.onerror = reject;
+        maskImg.src = '/creator/images/tshirt-mask.png';
+      });
+      
+      // Calculate dimensions for centered shirt
+      const scale = Math.min(size / maskImg.width, size / maskImg.height) * 0.9;
+      const w = maskImg.width * scale;
+      const h = maskImg.height * scale;
+      const x = (size - w) / 2;
+      const y = (size - h) / 2;
+      
+      // Create color layer with mask
+      const colorCanvas = document.createElement('canvas');
+      colorCanvas.width = size;
+      colorCanvas.height = size;
+      const colorCtx = colorCanvas.getContext('2d')!;
+      
+      // Draw the mask
+      colorCtx.drawImage(maskImg, x, y, w, h);
+      
+      // Use composite to fill only the mask area with color
+      colorCtx.globalCompositeOperation = 'source-in';
+      colorCtx.fillStyle = editorState.shirtColor;
+      colorCtx.fillRect(0, 0, size, size);
+      
+      // Draw color layer to main canvas
+      ctx.drawImage(colorCanvas, 0, 0);
+      
+      // Load and draw t-shirt texture with multiply blend
       const shirtImg = new Image();
       shirtImg.crossOrigin = 'anonymous';
       await new Promise<void>((resolve, reject) => {
         shirtImg.onload = () => {
-          // Color tint the shirt
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = shirtImg.width;
-          tempCanvas.height = shirtImg.height;
-          const tempCtx = tempCanvas.getContext('2d')!;
-          tempCtx.drawImage(shirtImg, 0, 0);
-          
-          if (editorState.shirtColor !== '#FFFFFF') {
-            const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const data = imageData.data;
-            const targetR = parseInt(editorState.shirtColor.slice(1, 3), 16);
-            const targetG = parseInt(editorState.shirtColor.slice(3, 5), 16);
-            const targetB = parseInt(editorState.shirtColor.slice(5, 7), 16);
-            
-            for (let i = 0; i < data.length; i += 4) {
-              if (data[i + 3] > 0) {
-                const r = data[i], g = data[i + 1], b = data[i + 2];
-                const brightness = (r + g + b) / 3;
-                const brightnessRatio = brightness / 255;
-                const blendFactor = 0.85;
-                data[i] = Math.round(targetR * brightnessRatio * blendFactor + r * (1 - blendFactor));
-                data[i + 1] = Math.round(targetG * brightnessRatio * blendFactor + g * (1 - blendFactor));
-                data[i + 2] = Math.round(targetB * brightnessRatio * blendFactor + b * (1 - blendFactor));
-              }
-            }
-            tempCtx.putImageData(imageData, 0, 0);
-          }
-          
-          // Draw shirt centered
-          const scale = Math.min(size / shirtImg.width, size / shirtImg.height) * 0.9;
-          const w = shirtImg.width * scale;
-          const h = shirtImg.height * scale;
-          const x = (size - w) / 2;
-          const y = (size - h) / 2;
-          ctx.drawImage(tempCanvas, x, y, w, h);
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.drawImage(shirtImg, x, y, w, h);
+          ctx.globalCompositeOperation = 'source-over';
           resolve();
         };
         shirtImg.onerror = reject;
@@ -483,19 +484,31 @@ export default function CreatorClient() {
               style={{
                 width: '500px',
                 height: '500px',
-                backgroundColor: editorState.shirtColor,
               }}
             >
-              {/* T-Shirt Base */}
+              {/* Color Layer - masked to shirt shape */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundColor: editorState.shirtColor,
+                  WebkitMaskImage: 'url(/creator/images/tshirt-mask.png)',
+                  WebkitMaskSize: 'contain',
+                  WebkitMaskPosition: 'center',
+                  WebkitMaskRepeat: 'no-repeat',
+                  maskImage: 'url(/creator/images/tshirt-mask.png)',
+                  maskSize: 'contain',
+                  maskPosition: 'center',
+                  maskRepeat: 'no-repeat',
+                }}
+              />
+              
+              {/* T-Shirt Base with texture/shadows */}
               <img
                 src="/creator/images/tshirt.png"
                 alt="T-Shirt"
                 className="absolute inset-0 w-full h-full object-contain"
                 style={{
-                  filter: editorState.shirtColor !== '#FFFFFF'
-                    ? `opacity(0.9)`
-                    : 'none',
-                  mixBlendMode: editorState.shirtColor !== '#FFFFFF' ? 'multiply' : 'normal',
+                  mixBlendMode: 'multiply',
                 }}
               />
               
