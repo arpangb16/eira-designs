@@ -1,16 +1,11 @@
-import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin } from '@/lib/admin-check';
 import { prisma } from '@/lib/db';
 import LogosClient from './_components/logos-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LogosPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    redirect('/login');
-  }
+  await requireAdmin();
 
   // Fetch logos
   const logos = await prisma.logo.findMany({

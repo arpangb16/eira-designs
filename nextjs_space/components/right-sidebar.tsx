@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -13,22 +14,38 @@ import {
   Grid3x3,
   Palette,
   Sparkles,
+  Wand2,
+  Image,
   Menu,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 
-const navigation = [
+const adminNavigation = [
   { name: 'Templates', href: '/templates', icon: FileImage },
+  { name: 'Logos', href: '/logos', icon: Image },
   { name: 'Fonts', href: '/fonts', icon: Type },
   { name: 'Patterns', href: '/patterns', icon: Grid3x3 },
   { name: 'Colors', href: '/colors', icon: Palette },
   { name: 'Embellishments', href: '/embellishments', icon: Sparkles },
+  { name: 'Creator', href: '/creator', icon: Wand2 },
 ];
+
+// Regular users don't see the design library sidebar
+const userNavigation: typeof adminNavigation = [];
 
 export function RightSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { data: session } = useSession() || {};
+  
+  const isAdmin = session?.user?.role === 'ADMIN';
+  const navigation = isAdmin ? adminNavigation : userNavigation;
+
+  // Don't render right sidebar for non-admin users
+  if (!isAdmin) {
+    return null;
+  }
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="flex h-full flex-col">

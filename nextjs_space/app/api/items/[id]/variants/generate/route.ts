@@ -283,6 +283,7 @@ export async function POST(
           configuration: JSON.stringify(combination),
           status: 'preview',
           previewSvgPath: cloud_storage_path,
+          previewIsPublic: true,
         },
       });
 

@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth-options'
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '@/lib/admin-check'
 import { ItemDetailClient } from './_components/item-detail-client'
 import { prisma } from '@/lib/db'
 
@@ -11,10 +10,7 @@ export default async function ItemDetailPage({
 }: {
   params: { id: string }
 }) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
+  await requireAdmin()
 
   const item = await prisma.item.findUnique({
     where: { id: params.id },
@@ -39,7 +35,8 @@ export default async function ItemDetailPage({
   })
 
   if (!item) {
-    redirect('/items')
+    redirect('/items');
+    return null;
   }
 
   // Fetch all projects and templates for the edit form

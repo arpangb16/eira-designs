@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Edit, FileImage, Download, Layers, FileType, Wand2, Settings, Grid3x3 } from 'lucide-react'
+import { ArrowLeft, Edit, FileImage, Download, Layers, FileType, Wand2, Settings, Grid3x3, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -18,6 +18,7 @@ import { SVGLayer, LayerChange } from '@/components/layer-inspector'
 import { toast } from 'sonner'
 import LayerConfigurationTab from './layer-configuration-tab'
 import VariantGalleryTab from './variant-gallery-tab'
+import VisualEditorTab from './visual-editor-tab'
 
 interface Template {
   id: string
@@ -83,6 +84,7 @@ export function ItemDetailClient({
   const [savingChanges, setSavingChanges] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [variantRefreshTrigger, setVariantRefreshTrigger] = useState(0)
+  const [zoom, setZoom] = useState(100) // Zoom percentage
 
   useEffect(() => {
     // Fetch .ai file URL
@@ -230,6 +232,19 @@ export function ItemDetailClient({
     }
   }
 
+  // Zoom control handlers
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 25, 200))
+  }
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 25, 50))
+  }
+
+  const handleZoomReset = () => {
+    setZoom(100)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -355,7 +370,7 @@ export function ItemDetailClient({
                 <FileImage className="w-4 h-4 mr-2" />
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="editor" disabled={!svgPreview || svgLayers.length === 0}>
+              <TabsTrigger value="editor" disabled={!item.template.svgPath || !item.template.layerData}>
                 <Wand2 className="w-4 h-4 mr-2" />
                 Visual Editor
               </TabsTrigger>
@@ -379,24 +394,63 @@ export function ItemDetailClient({
                         <FileImage className="w-5 h-5 mr-2" />
                         SVG Preview
                       </span>
-                      {item.template.layerData && (
-                        <Badge variant="outline">
-                          <Layers className="w-3 h-3 mr-1" />
-                          {getLayerCount()} layers
-                        </Badge>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        {svgPreview && (
+                          <div className="flex items-center space-x-1 bg-gray-100 rounded-md p-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleZoomOut}
+                              disabled={zoom <= 50}
+                              className="h-7 w-7 p-0"
+                            >
+                              <ZoomOut className="w-3 h-3" />
+                            </Button>
+                            <span className="text-xs font-medium px-1 min-w-[45px] text-center">
+                              {zoom}%
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleZoomIn}
+                              disabled={zoom >= 200}
+                              className="h-7 w-7 p-0"
+                            >
+                              <ZoomIn className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleZoomReset}
+                              className="h-7 w-7 p-0"
+                              title="Reset Zoom"
+                            >
+                              <Maximize2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                        {item.template.layerData && (
+                          <Badge variant="outline">
+                            <Layers className="w-3 h-3 mr-1" />
+                            {getLayerCount()} layers
+                          </Badge>
+                        )}
+                      </div>
                     </CardTitle>
                     <CardDescription>
                       Visual preview of the template design
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="relative w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden border">
+                    <div className="relative w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-auto border">
                       {svgPreview ? (
                         <div 
-                          className="w-full h-full p-4 flex items-center justify-center" 
+                          className="w-full h-full p-4 flex items-center justify-center transition-transform duration-200" 
                           dangerouslySetInnerHTML={{ __html: svgPreview }}
-                          style={{ overflow: 'hidden' }}
+                          style={{ 
+                            transform: `scale(${zoom / 100})`,
+                            transformOrigin: 'center center'
+                          }}
                         />
                       ) : item.template.svgPath ? (
                         <div className="w-full h-full flex items-center justify-center">
@@ -477,17 +531,18 @@ export function ItemDetailClient({
             </TabsContent>
 
             <TabsContent value="editor" className="mt-6">
-              {svgPreview && svgLayers.length > 0 ? (
-                <SVGEditor
-                  svgContent={svgPreview}
-                  layers={svgLayers}
-                  onSave={handleSaveLayerChanges}
+              {item.template.svgPath && item.template.layerData ? (
+                <VisualEditorTab
+                  itemId={item.id}
+                  templateLayerData={item.template.layerData}
+                  templateSvgPath={item.template.svgPath}
+                  templateSvgIsPublic={item.template.svgIsPublic}
                 />
               ) : (
                 <Card>
                   <CardContent className="text-center py-12">
-                    <Layers className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No SVG layers available</h3>
+                    <Wand2 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">Visual Editor Not Available</h3>
                     <p className="text-gray-600">
                       Upload an SVG file with named layers to use the visual editor
                     </p>

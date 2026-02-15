@@ -120,7 +120,7 @@ export function LogoPicker({ open, onOpenChange, onSelect, itemId, currentLogoPa
       if (response.ok) {
         const data = await response.json();
         // Use the newly created logo
-        onSelect(data.logo.logoPath, data.logo.logoIsPublic);
+        onSelect(data.logoPath, data.logoIsPublic);
         onOpenChange(false);
         // Reset form
         setNewLogoName("");

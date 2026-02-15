@@ -51,10 +51,17 @@ export function ItemsClient({ items, projects, templates }: { items: Item[]; pro
         body: JSON.stringify(formData),
       })
       if (response.ok) {
+        const data = await response.json()
         setOpen(false)
         setEditingItem(null)
         setFormData({ name: '', projectId: '', templateId: '', status: 'draft' })
-        router.refresh()
+        
+        // If creating a new item, redirect to the item detail page
+        if (!editingItem && data.id) {
+          router.push(`/items/${data.id}`)
+        } else {
+          router.refresh()
+        }
       }
     } catch (error) {
       console.error('Failed to save item:', error)

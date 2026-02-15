@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Sparkles, Layers, Type, Palette, AlertCircle, Grid3x3, Image as ImageIcon, Plus, X, Upload } from 'lucide-react';
+import { Loader2, Sparkles, Layers, Type, Palette, AlertCircle, Grid3x3, Image as ImageIcon, Plus, X, Upload, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { EnhancedColorPicker } from '@/components/enhanced-color-picker';
 import { LogoPicker } from '@/components/logo-picker';
@@ -109,17 +109,18 @@ export default function LayerConfigurationTab({
     return '#000000'; // default
   }
 
-  // Flatten nested layers - keep top-level meaningful layers
+  // Process layers hierarchically - keep structure for cascading display
   function flattenLayers(layers: SVGLayer[]): SVGLayer[] {
     const result: SVGLayer[] = [];
     
     layers.forEach(layer => {
-      // For top-level groups (like Body, Inseam, etc.), include them
+      // For top-level groups (like Body, Inseam, etc.), include them with their children
       // These are the meaningful layers users want to configure
       if (layer.type === 'group' && layer.children && layer.children.length > 0) {
         // Check if any children have fill colors (colorable)
         const hasColorableChildren = hasColorInChildren(layer);
         if (hasColorableChildren) {
+          // Keep the layer with its children structure intact
           result.push(layer);
         }
       }
@@ -136,6 +137,39 @@ export default function LayerConfigurationTab({
     return result;
   }
 
+  // Recursively initialize configs for a layer and its children
+  function initializeLayerConfig(layer: SVGLayer, configs: Record<string, LayerConfig>) {
+    const isTextLayer = layer.type === 'text' || layer.content;
+    const isLogo = isLogoLayer(layer);
+    
+    let layerType: 'text' | 'graphic' | 'logo';
+    let value: string;
+    
+    if (isLogo) {
+      layerType = 'logo';
+      value = ''; // No logo selected initially
+    } else if (isTextLayer) {
+      layerType = 'text';
+      value = layer.content || '';
+    } else {
+      layerType = 'graphic';
+      value = getFirstFillColor(layer);
+    }
+    
+    configs[layer.id] = {
+      layerId: layer.id,
+      layerName: layer.name,
+      layerType,
+      value,
+      logoIsPublic: isLogo ? true : undefined
+    };
+
+    // Recursively initialize children
+    if (layer.children && layer.children.length > 0) {
+      layer.children.forEach(child => initializeLayerConfig(child, configs));
+    }
+  }
+
   // Parse template layers
   useEffect(() => {
     if (templateLayerData) {
@@ -143,38 +177,14 @@ export default function LayerConfigurationTab({
         const parsed: ParsedSVG = JSON.parse(templateLayerData);
         console.log('[LayerConfig] Parsed layers:', parsed);
         
-        // Flatten layers (including nested ones)
-        const flattenedLayers = flattenLayers(parsed.layers);
-        setLayers(flattenedLayers);
+        // Process layers hierarchically (keeps structure)
+        const processedLayers = flattenLayers(parsed.layers);
+        setLayers(processedLayers);
         
-        // Initialize layer configurations
+        // Initialize layer configurations recursively (includes all children)
         const initialConfigs: Record<string, LayerConfig> = {};
-        flattenedLayers.forEach(layer => {
-          const isTextLayer = layer.type === 'text' || layer.content;
-          const isLogo = isLogoLayer(layer);
-          
-          let layerType: 'text' | 'graphic' | 'logo';
-          let value: string;
-          
-          if (isLogo) {
-            layerType = 'logo';
-            value = ''; // No logo selected initially
-          } else if (isTextLayer) {
-            layerType = 'text';
-            value = layer.content || '';
-          } else {
-            layerType = 'graphic';
-            value = getFirstFillColor(layer);
-          }
-          
-          initialConfigs[layer.id] = {
-            layerId: layer.id,
-            layerName: layer.name,
-            layerType,
-            value,
-            logoIsPublic: isLogo ? true : undefined
-          };
-        });
+        processedLayers.forEach(layer => initializeLayerConfig(layer, initialConfigs));
+        
         setLayerConfigs(initialConfigs);
         console.log('[LayerConfig] Initialized configs:', initialConfigs);
       } catch (error) {
@@ -428,23 +438,18 @@ export default function LayerConfigurationTab({
               <Palette className="h-5 w-5" />
               Graphic Layers ({graphicLayers.length})
             </CardTitle>
-            <CardDescription>Change colors for each layer</CardDescription>
+            <CardDescription>Change colors for each layer (expand to see sub-layers)</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {graphicLayers.map(layer => {
-              const config = layerConfigs[layer.id];
-              if (!config) return null;
-
-              return (
-                <div key={layer.id} className="space-y-2">
-                  <EnhancedColorPicker
-                    label={config.layerName}
-                    color={config.value}
-                    onChange={(color) => updateLayerConfig(layer.id, color)}
-                  />
-                </div>
-              );
-            })}
+          <CardContent className="space-y-3">
+            {graphicLayers.map(layer => (
+              <HierarchicalLayerControl
+                key={layer.id}
+                layer={layer}
+                layerConfigs={layerConfigs}
+                updateLayerConfig={updateLayerConfig}
+                level={0}
+              />
+            ))}
           </CardContent>
         </Card>
       )}
@@ -665,6 +670,97 @@ export default function LayerConfigurationTab({
           itemId={itemId}
           currentLogoPath={layerConfigs[currentLogoLayerId]?.value || null}
         />
+      )}
+    </div>
+  );
+}
+
+// Hierarchical Layer Control Component
+interface HierarchicalLayerControlProps {
+  layer: SVGLayer;
+  layerConfigs: Record<string, LayerConfig>;
+  updateLayerConfig: (layerId: string, value: string) => void;
+  level: number;
+}
+
+function HierarchicalLayerControl({ 
+  layer, 
+  layerConfigs, 
+  updateLayerConfig, 
+  level 
+}: HierarchicalLayerControlProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const config = layerConfigs[layer.id];
+  
+  if (!config) return null;
+
+  // Check if this layer has children with colors (graphic sub-layers)
+  const hasColorableChildren = layer.children?.some(child => {
+    const childConfig = layerConfigs[child.id];
+    return childConfig && childConfig.layerType === 'graphic';
+  }) || false;
+
+  const indent = level * 16; // Indentation in pixels
+
+  return (
+    <div>
+      {/* Main Layer */}
+      <div 
+        className="flex items-start gap-2 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+        style={{ marginLeft: `${indent}px` }}
+      >
+        {/* Expand/Collapse Button */}
+        {hasColorableChildren && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 flex-shrink-0"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+        
+        {/* Color Picker - Full Width */}
+        <div className="flex-1">
+          <EnhancedColorPicker
+            label={config.layerName}
+            color={config.value}
+            onChange={(color) => updateLayerConfig(layer.id, color)}
+          />
+        </div>
+
+        {/* Sub-layer Count Badge */}
+        {hasColorableChildren && (
+          <Badge variant="secondary" className="flex-shrink-0 mt-2">
+            {layer.children?.filter(child => layerConfigs[child.id]?.layerType === 'graphic').length || 0} sub-layers
+          </Badge>
+        )}
+      </div>
+
+      {/* Child Layers (Expanded) */}
+      {isExpanded && hasColorableChildren && layer.children && (
+        <div className="mt-2 space-y-2">
+          {layer.children.map(child => {
+            const childConfig = layerConfigs[child.id];
+            // Only show graphic sub-layers
+            if (!childConfig || childConfig.layerType !== 'graphic') return null;
+
+            return (
+              <HierarchicalLayerControl
+                key={child.id}
+                layer={child}
+                layerConfigs={layerConfigs}
+                updateLayerConfig={updateLayerConfig}
+                level={level + 1}
+              />
+            );
+          })}
+        </div>
       )}
     </div>
   );

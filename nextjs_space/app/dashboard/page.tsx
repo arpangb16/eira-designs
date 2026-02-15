@@ -1,18 +1,11 @@
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth-options'
 import { DashboardClient } from './_components/dashboard-client'
-
+import { requireAdmin } from '@/lib/admin-check'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
-
-  if (!session) {
-    redirect('/login')
-  }
+  await requireAdmin();
 
   // Fetch dashboard statistics
   const [schoolsCount, teamsCount, projectsCount, itemsCount] = await Promise.all([

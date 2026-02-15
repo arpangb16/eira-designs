@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth-options'
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '@/lib/admin-check'
 import { TeamDetailClient } from './_components/team-detail-client'
 import { prisma } from '@/lib/db'
 
@@ -11,10 +10,7 @@ export default async function TeamDetailPage({
 }: {
   params: { id: string }
 }) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
+  await requireAdmin()
 
   const team = await prisma.team.findUnique({
     where: { id: params.id },
@@ -32,7 +28,8 @@ export default async function TeamDetailPage({
   })
 
   if (!team) {
-    redirect('/teams')
+    redirect('/teams');
+    return null;
   }
 
   // Serialize dates
