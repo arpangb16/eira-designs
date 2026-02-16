@@ -70,6 +70,8 @@ apparel_design_manager/
 4. **Run development server:**
    ```bash
    yarn dev
+   # Or use the convenience script from project root:
+   ./run_Eira.sh
    ```
 
    Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -162,6 +164,22 @@ The bridge utility runs on your local machine and automates Adobe Illustrator to
 
 ## 📚 Documentation
 
+### Comprehensive Documentation
+- **[DOCUMENTATION.md](./DOCUMENTATION.md)** - Complete project documentation including:
+  - Project overview and architecture
+  - Authentication system details
+  - Component documentation
+  - API endpoint reference
+  - Database schema
+  - Navigation structure
+  - Development workflow
+  - Troubleshooting guide
+
+- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick reference guide for common tasks and commands
+
+- **[CHANGELOG.md](./CHANGELOG.md)** - Version history and recent changes
+
+### Feature-Specific Documentation
 - `BRIDGE_SETUP_GUIDE.md` - Detailed bridge utility setup instructions
 - `VARIANT_TO_BRIDGE_WORKFLOW.md` - Complete variant generation workflow
 - `SVG_WORKFLOW_TEST_SUMMARY.md` - SVG parsing and layer detection guide
