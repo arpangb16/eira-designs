@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -20,27 +20,47 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    // AUTHENTICATION DISABLED - Auto sign in with any credentials
     setLoading(true)
-
+    
     try {
+      // Automatically sign in with mock credentials
       const result = await signIn('credentials', {
-        email,
-        password,
+        email: email || 'admin@eira.com',
+        password: password || 'any',
         redirect: false,
       })
 
       if (result?.error) {
-        setError('Invalid email or password')
+        // Even if there's an error, try to redirect (auth is disabled)
+        router.replace('/dashboard')
       } else {
         router.replace('/dashboard')
       }
     } catch (err) {
-      setError('An error occurred. Please try again.')
+      // On error, still redirect (auth is disabled)
+      router.replace('/dashboard')
     } finally {
       setLoading(false)
     }
   }
+  
+  // Auto sign in on page load (authentication disabled)
+  useEffect(() => {
+    const autoSignIn = async () => {
+      try {
+        await signIn('credentials', {
+          email: 'admin@eira.com',
+          password: 'any',
+          redirect: false,
+        })
+        router.replace('/dashboard')
+      } catch (err) {
+        // Ignore errors, auth is disabled
+      }
+    }
+    autoSignIn()
+  }, [router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-orange-50 p-4">

@@ -10,10 +10,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { FileUpload } from '@/components/file-upload'
-import { Plus, FileImage, Trash2, Edit, Download, Layers } from 'lucide-react'
+import { Plus, FileImage, Trash2, Edit, Download, Layers, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { TemplateLayerEditor } from './template-layer-editor'
 
 interface Template {
   id: string
@@ -48,6 +49,8 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({})
   const [svgPreviews, setSvgPreviews] = useState<Record<string, string>>({})
   const [parsingSvg, setParsingSvg] = useState(false)
+  const [layerEditorOpen, setLayerEditorOpen] = useState(false)
+  const [editingLayerTemplate, setEditingLayerTemplate] = useState<Template | null>(null)
 
   const fetchFileUrl = async (template: Template) => {
     if (!template?.filePath || fileUrls[template.id]) return
@@ -241,6 +244,35 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
     }
   }
 
+  const handleEditLayers = (template: Template) => {
+    if (!template.layerData || !template.svgPath) {
+      return
+    }
+    setEditingLayerTemplate(template)
+    setLayerEditorOpen(true)
+  }
+
+  const handleSaveLayerData = async (layerData: string) => {
+    if (!editingLayerTemplate) return
+    
+    try {
+      const response = await fetch(`/api/templates/${editingLayerTemplate.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layerData }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save layer data')
+      }
+      
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to save layer data:', error)
+      throw error
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
@@ -282,11 +314,11 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                   </div>
                   <div className="border-t pt-4">
                     <Label className="text-lg font-semibold">Files</Label>
-                    <p className="text-sm text-gray-500 mb-4">Upload the master .ai file (required) and an SVG file (optional) for layer preview</p>
+                    <p className="text-sm text-gray-500 mb-4">Upload template files: .ai, .jpeg, .png, or .svg (all optional). SVG file can be used for layer preview.</p>
                     
                     <FileUpload 
-                      label=".AI Template File (Required)" 
-                      accept=".ai,application/postscript,application/illustrator" 
+                      label="Template File (Optional - .ai, .jpeg, .png, or .svg)" 
+                      accept=".ai,.jpeg,.jpg,.png,.svg,application/postscript,application/illustrator,image/jpeg,image/png,image/svg+xml" 
                       isPublic={false} 
                       maxSize={500}
                       existingFileName={editingTemplate?.filePath ? editingTemplate.filePath.split('/').pop() : null}
@@ -318,7 +350,7 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={loading || !formData.filePath}>{loading ? 'Saving...' : editingTemplate ? 'Update' : 'Create'}</Button>
+                  <Button type="submit" disabled={loading}>{loading ? 'Saving...' : editingTemplate ? 'Update' : 'Create'}</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -378,22 +410,50 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(template)}>
-                        <Edit className="w-4 h-4 mr-2" />Edit
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDownload(template)}>
-                        <Download className="w-4 h-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(template.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(template)}>
+                          <Edit className="w-4 h-4 mr-2" />Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDownload(template)}>
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(template.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {template.layerData && template.svgPath && (
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="w-full" 
+                          onClick={() => handleEditLayers(template)}
+                        >
+                          <Palette className="w-4 h-4 mr-2" />
+                          Edit Layers
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
+        )}
+
+        {/* Layer Editor Dialog */}
+        {editingLayerTemplate && (
+          <TemplateLayerEditor
+            template={editingLayerTemplate}
+            open={layerEditorOpen}
+            onOpenChange={(open) => {
+              setLayerEditorOpen(open)
+              if (!open) {
+                setEditingLayerTemplate(null)
+              }
+            }}
+            onSave={handleSaveLayerData}
+          />
         )}
     </div>
   )

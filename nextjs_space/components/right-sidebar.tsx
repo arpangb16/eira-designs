@@ -16,9 +16,11 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  Image,
 } from 'lucide-react';
 
 const navigation = [
+  { name: 'Logos', href: '/logos', icon: Image },
   { name: 'Templates', href: '/templates', icon: FileImage },
   { name: 'Fonts', href: '/fonts', icon: Type },
   { name: 'Patterns', href: '/patterns', icon: Grid3x3 },

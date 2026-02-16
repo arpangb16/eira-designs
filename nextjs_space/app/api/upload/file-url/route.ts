@@ -7,11 +7,12 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      console.error('[FILE-URL] Unauthorized: No session')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // AUTHENTICATION DISABLED - Allow file URL requests without session
+    // const session = await getServerSession(authOptions)
+    // if (!session) {
+    //   console.error('[FILE-URL] Unauthorized: No session')
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     const body = await request.json()
     const { cloud_storage_path, isPublic } = body

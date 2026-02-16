@@ -81,10 +81,10 @@ export default function LogosClient({
     description: '',
     logoPath: '',
     logoIsPublic: false,
-    schoolId: '',
-    teamId: '',
-    projectId: '',
-    itemId: '',
+    schoolId: 'none',
+    teamId: 'none',
+    projectId: 'none',
+    itemId: 'none',
   });
 
   // Filtered teams based on selected school
@@ -95,10 +95,10 @@ export default function LogosClient({
     if (formData.schoolId) {
       setFilteredTeams(teams.filter(t => t.schoolId === formData.schoolId));
       // Clear team selection if it doesn't belong to the selected school
-      if (formData.teamId) {
+      if (formData.teamId && formData.teamId !== 'none') {
         const team = teams.find(t => t.id === formData.teamId);
         if (team && team.schoolId !== formData.schoolId) {
-          setFormData(prev => ({ ...prev, teamId: '' }));
+          setFormData(prev => ({ ...prev, teamId: 'none' }));
         }
       }
     } else {
@@ -139,10 +139,10 @@ export default function LogosClient({
           description: formData.description || null,
           logoPath: formData.logoPath,
           logoIsPublic: formData.logoIsPublic,
-          schoolId: formData.schoolId || null,
-          teamId: formData.teamId || null,
-          projectId: formData.projectId || null,
-          itemId: formData.itemId || null,
+          schoolId: formData.schoolId === 'none' || !formData.schoolId ? null : formData.schoolId,
+          teamId: formData.teamId === 'none' || !formData.teamId ? null : formData.teamId,
+          projectId: formData.projectId === 'none' || !formData.projectId ? null : formData.projectId,
+          itemId: formData.itemId === 'none' || !formData.itemId ? null : formData.itemId,
         }),
       });
 
@@ -185,10 +185,10 @@ export default function LogosClient({
       description: logo.description || '',
       logoPath: logo.logoPath,
       logoIsPublic: logo.logoIsPublic,
-      schoolId: logo.schoolId || '',
-      teamId: logo.teamId || '',
-      projectId: logo.projectId || '',
-      itemId: logo.itemId || '',
+      schoolId: logo.schoolId || 'none',
+      teamId: logo.teamId || 'none',
+      projectId: logo.projectId || 'none',
+      itemId: logo.itemId || 'none',
     });
     setDialogOpen(true);
   }
@@ -203,10 +203,10 @@ export default function LogosClient({
         description: '',
         logoPath: '',
         logoIsPublic: false,
-        schoolId: '',
-        teamId: '',
-        projectId: '',
-        itemId: '',
+        schoolId: 'none',
+        teamId: 'none',
+        projectId: 'none',
+        itemId: 'none',
       });
     }
   }
@@ -284,7 +284,7 @@ export default function LogosClient({
                       <SelectValue placeholder="Select school (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {schools.map((school) => (
                         <SelectItem key={school.id} value={school.id}>
                           {school.name}
@@ -305,7 +305,7 @@ export default function LogosClient({
                       <SelectValue placeholder="Select team (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {filteredTeams.map((team) => (
                         <SelectItem key={team.id} value={team.id}>
                           {team.name}
@@ -331,7 +331,7 @@ export default function LogosClient({
                       <SelectValue placeholder="Select project (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
@@ -351,7 +351,7 @@ export default function LogosClient({
                       <SelectValue placeholder="Select item (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {items.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
                           {item.name}

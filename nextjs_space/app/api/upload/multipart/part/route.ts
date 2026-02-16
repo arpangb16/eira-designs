@@ -5,10 +5,11 @@ import { getPresignedUrlForPart } from '@/lib/s3'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // AUTHENTICATION DISABLED - Allow uploads without session
+    // const session = await getServerSession(authOptions)
+    // if (!session) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     const body = await request.json()
     const { cloud_storage_path, uploadId, partNumber } = body

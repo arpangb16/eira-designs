@@ -106,6 +106,31 @@ export function FileUpload({
     }
 
     const { uploadUrl, cloud_storage_path } = await response.json()
+    
+    // Check if using local storage (URL starts with /api/upload/local)
+    if (uploadUrl.startsWith('/api/upload/local')) {
+      console.log('[FileUpload] Uploading to local storage...')
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('isPublic', isPublic.toString())
+      
+      const uploadResponse = await fetch('/api/upload/local', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to upload file to local storage')
+      }
+      
+      const result = await uploadResponse.json()
+      console.log('[FileUpload] Local upload successful:', result.cloud_storage_path)
+      setProgress(100)
+      onUploadComplete(result.cloud_storage_path, isPublic)
+      return
+    }
+    
     console.log('[FileUpload] Got presigned URL, uploading to S3...')
 
     // Upload file to S3

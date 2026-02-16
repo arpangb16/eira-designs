@@ -7,8 +7,11 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // AUTHENTICATION DISABLED
+    // const session = await getServerSession(authOptions)
+    // if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // END AUTHENTICATION DISABLED
+    
     const templates = await prisma.template.findMany({
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { items: true } } },
@@ -24,14 +27,14 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { name, category, filePath, fileIsPublic, svgPath, svgIsPublic, layerData, description } = await request.json()
-    if (!name || !category || !filePath) {
-      return NextResponse.json({ error: 'Name, category, and filePath required' }, { status: 400 })
+    if (!name || !category) {
+      return NextResponse.json({ error: 'Name and category are required' }, { status: 400 })
     }
     const template = await prisma.template.create({
       data: { 
         name, 
         category, 
-        filePath, 
+        filePath: filePath || null, 
         fileIsPublic: fileIsPublic ?? false, 
         svgPath: svgPath ?? null,
         svgIsPublic: svgIsPublic ?? false,
