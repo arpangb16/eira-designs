@@ -11,8 +11,11 @@
 7. [API Documentation](#api-documentation)
 8. [Database Schema](#database-schema)
 9. [Navigation & Sidebars](#navigation--sidebars)
-10. [Development Workflow](#development-workflow)
-11. [Troubleshooting](#troubleshooting)
+10. [File Storage System](#file-storage-system)
+11. [Template System](#template-system)
+12. [Creator Tool](#creator-tool)
+13. [Development Workflow](#development-workflow)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -24,18 +27,79 @@
 
 - 🎨 **Dynamic Design Management**: Layer-based configuration system for SVG templates
 - 👥 **Organization Hierarchy**: Schools → Teams → Projects → Items
-- 🎨 **Design Asset Library**: Colors, Fonts, Patterns, Embellishments, Logos
+- 🎨 **Design Asset Library**: Colors, Fonts, Patterns, Embellishments, Logos, Templates
 - 🛒 **Shopping Cart & Orders**: E-commerce functionality for design purchases
 - 🔐 **Role-Based Access Control**: Admin and User roles with different permissions
-- ☁️ **Cloud Storage**: AWS S3 integration for all file storage
-- 🎨 **Design Creator**: Interactive SVG editor for custom designs
+- ☁️ **Cloud Storage**: AWS S3 integration with local storage fallback
+- 🎨 **Enhanced Creator Tool**: Interactive design creator with template library integration
+- 🎨 **Template Layer Editor**: Edit text and colors with live preview
+- 📐 **Template Positioning**: Drag-and-drop positioning with boundary constraints
 - 🔗 **Adobe Bridge Integration**: Automated .AI file generation
 
 ---
 
 ## Recent Changes
 
-### Navigation Updates (Latest)
+### Latest Updates (Current Session)
+
+#### Template System Enhancements
+- ✅ **Template Layer Editor**: Full-featured editor for editing template layers
+  - Edit text content for text layers
+  - Change fill and stroke colors for graphic layers
+  - Live preview of changes in real-time
+  - Save modified layer data back to templates
+- ✅ **Template Selector in Creator**: Browse and add templates from library
+  - Search templates by name, category, or description
+  - Visual preview of templates with SVG previews
+  - One-click template addition to creator designs
+- ✅ **Enhanced Template Creation**: Support for multiple file types
+  - Accepts `.ai`, `.jpeg`, `.jpg`, `.png`, and `.svg` files
+  - All file types are optional (no longer required)
+  - Better file type validation and error handling
+
+#### Creator Tool Improvements
+- ✅ **Template Positioning Controls**: Full positioning system
+  - Position X/Y sliders (0-100%)
+  - Width/Height sliders (5-50%)
+  - Drag-and-drop positioning in preview
+  - Boundary constraints to keep templates within SVG boundaries
+  - Horizontal flip functionality
+- ✅ **Creator Design Save**: Complete CRUD operations
+  - Save designs with all template configurations
+  - Load saved designs for editing
+  - Update existing designs
+  - Delete designs
+  - Preview images support
+
+#### File Storage System
+- ✅ **Local Storage Fallback**: Automatic fallback when AWS not configured
+  - Files saved to `public/uploads/` directory
+  - Automatic directory creation
+  - Seamless switching between AWS and local storage
+  - Environment variable: `USE_LOCAL_STORAGE=true` to force local storage
+- ✅ **AWS Connection**: Verified and working
+  - Presigned URL generation tested
+  - Automatic credential validation
+  - Better error messages and logging
+
+#### Authentication Updates
+- ✅ **Authentication Disabled**: For development purposes
+  - All users can access all features
+  - Mock admin user automatically created
+  - No login required (auto-sign-in)
+  - Easy to re-enable when needed
+
+#### Database Schema Updates
+- ✅ **CreatorDesign Model**: New model for saving creator designs
+  - Stores design configurations
+  - Links to organization hierarchy (school, team, project, item)
+  - JSON storage for flexible design data
+  - Preview image support
+- ✅ **Template Model Updates**: File path now optional
+  - Templates can be created without files
+  - Better support for template library workflow
+
+### Navigation Updates
 
 #### Left Sidebar
 - **Removed**: Templates, Logos, Patterns, Embellishments, Colors, Fonts
@@ -46,25 +110,6 @@
 #### Right Sidebar
 - **Added**: Logos (now first item)
 - **Current Menu Items**: Logos, Templates, Fonts, Patterns, Colors, Embellishments
-
-### Authentication Fixes
-
-**Issue**: Authentication errors on login due to database queries in session callback.
-
-**Solution**: 
-- Modified `auth-options.ts` to store user role in JWT token during login
-- Removed database query from session callback
-- Role is now fetched once during authentication and stored in token
-
-**Files Modified**:
-- `lib/auth-options.ts`: Updated JWT and session callbacks
-- `types/next-auth.d.ts`: Added role to Session type definition
-
-### New Files Created
-
-1. **`.cursor/rules/party-mode.mdc`**: Cursor AI rule for enthusiastic interactions
-2. **`run_Eira.sh`**: Script to restart localhost development server
-3. **`lib/svg-template-parser.ts`**: SVG template parsing utilities (moved from other location)
 
 ---
 
@@ -82,6 +127,7 @@ Eira-designs/
 │   │   │   │   ├── projects/     # Project management
 │   │   │   │   ├── items/        # Item/Design management
 │   │   │   │   ├── templates/    # Template management
+│   │   │   │   │   ├── parse-svg/ # SVG parsing endpoint
 │   │   │   │   ├── logos/        # Logo management
 │   │   │   │   ├── patterns/     # Pattern management
 │   │   │   │   ├── fonts/        # Font management
@@ -89,11 +135,22 @@ Eira-designs/
 │   │   │   │   ├── embellishments/ # Embellishment management
 │   │   │   │   ├── cart/         # Shopping cart
 │   │   │   │   ├── orders/       # Order management
+│   │   │   │   ├── creator-designs/ # Creator design CRUD
 │   │   │   │   ├── bridge/       # Adobe Bridge integration
 │   │   │   │   └── upload/       # File upload endpoints
+│   │   │   │       ├── presigned/ # S3 presigned URLs
+│   │   │   │       ├── multipart/ # Multipart uploads
+│   │   │   │       └── local/     # Local file storage
 │   │   │   ├── admin/            # Admin pages
 │   │   │   ├── dashboard/        # Dashboard page
 │   │   │   ├── creator/          # Design creator page
+│   │   │   │   └── _components/
+│   │   │   │       ├── enhanced-creator-client.tsx
+│   │   │   │       └── template-selector.tsx
+│   │   │   ├── templates/         # Template management page
+│   │   │   │   └── _components/
+│   │   │   │       ├── templates-client.tsx
+│   │   │   │       └── template-layer-editor.tsx
 │   │   │   ├── login/            # Login page
 │   │   │   ├── signup/           # Signup page
 │   │   │   └── [various pages]    # Other feature pages
@@ -104,24 +161,31 @@ Eira-designs/
 │   │   │   ├── app-header.tsx    # Application header
 │   │   │   ├── app-layout.tsx    # Main layout wrapper
 │   │   │   ├── svg-editor.tsx    # SVG editing component
+│   │   │   ├── file-upload.tsx   # File upload component
 │   │   │   └── [other components]
 │   │   ├── lib/                   # Utility libraries
 │   │   │   ├── auth-options.ts   # NextAuth configuration
 │   │   │   ├── db.ts             # Prisma client
 │   │   │   ├── s3.ts             # AWS S3 utilities
+│   │   │   ├── local-storage.ts  # Local file storage utilities
 │   │   │   ├── svg-template-parser.ts # SVG parsing
+│   │   │   ├── admin-check.ts    # Admin authorization
 │   │   │   └── [other utilities]
 │   │   ├── prisma/               # Database
 │   │   │   └── schema.prisma     # Prisma schema
 │   │   ├── types/                # TypeScript type definitions
+│   │   │   └── next-auth.d.ts    # NextAuth type extensions
 │   │   └── public/               # Static assets
+│   │       └── uploads/          # Local file uploads (gitignored)
 │   ├── bridge_utility/           # Adobe Illustrator bridge
 │   └── README.md                 # Project README
 ├── .cursor/                      # Cursor IDE configuration
 │   └── rules/                    # Cursor rules
 │       └── party-mode.mdc        # Party mode rule
 ├── run_Eira.sh                   # Development server restart script
-└── DOCUMENTATION.md              # This file
+├── DOCUMENTATION.md              # This file
+├── CHANGELOG.md                  # Version history
+└── QUICK_REFERENCE.md            # Quick reference guide
 ```
 
 ---
@@ -132,7 +196,7 @@ Eira-designs/
 
 - **Node.js** 18+ and npm/yarn
 - **PostgreSQL** database
-- **AWS S3** bucket (for file storage)
+- **AWS S3** bucket (optional - local storage available)
 - **Adobe Illustrator** (for bridge utility - optional)
 
 ### Environment Variables
@@ -147,12 +211,15 @@ DATABASE_URL="postgresql://user:password@localhost:5432/apparel_db"
 NEXTAUTH_SECRET="your-secret-key-here-generate-with-openssl-rand-base64-32"
 NEXTAUTH_URL="http://localhost:3000"
 
-# AWS S3
+# AWS S3 (Optional - will use local storage if not set)
 AWS_BUCKET_NAME="your-bucket-name"
 AWS_FOLDER_PREFIX="apparel-designs/"
 AWS_ACCESS_KEY_ID="your-access-key"
 AWS_SECRET_ACCESS_KEY="your-secret-key"
 AWS_REGION="us-east-1"
+
+# Force Local Storage (Optional)
+USE_LOCAL_STORAGE=true  # Set to true to force local storage even if AWS is configured
 ```
 
 ### Installation Steps
@@ -181,7 +248,7 @@ AWS_REGION="us-east-1"
 
 4. **Access the application:**
    - Open [http://localhost:3000](http://localhost:3000)
-   - Sign up for a new account or log in
+   - Auto-sign-in enabled (no login required in development)
 
 ### Quick Start Script
 
@@ -203,9 +270,11 @@ This script:
 
 ### Overview
 
-The application uses **NextAuth.js** with JWT strategy for authentication. User roles are stored in the JWT token to avoid database queries on every session access.
+**Note**: Authentication is currently **DISABLED** for development. All users can access all features without login.
 
-### Authentication Flow
+The application uses **NextAuth.js** with JWT strategy for authentication. When enabled, user roles are stored in the JWT token to avoid database queries on every session access.
+
+### Authentication Flow (When Enabled)
 
 1. **Login**: User submits email/password
 2. **Authorize**: `auth-options.ts` validates credentials against database
@@ -220,37 +289,19 @@ The application uses **NextAuth.js** with JWT strategy for authentication. User 
 ### Files
 
 - **`lib/auth-options.ts`**: NextAuth configuration
-  - Credentials provider
-  - JWT callbacks
-  - Session callbacks
+  - Currently returns mock admin user (authentication disabled)
+  - Can be re-enabled by uncommenting authentication code
 - **`app/api/auth/[...nextauth]/route.ts`**: NextAuth API route handler
 - **`types/next-auth.d.ts`**: TypeScript definitions for NextAuth
+- **`lib/admin-check.ts`**: Admin authorization helpers (currently bypassed)
 
-### Key Implementation Details
+### Re-enabling Authentication
 
-```typescript
-// Role is fetched during login and stored in JWT
-async authorize(credentials) {
-  const user = await prisma.user.findUnique({
-    where: { email: credentials.email },
-    select: { id: true, email: true, name: true, password: true, role: true },
-  })
-  // ... password validation ...
-  return { id: user.id, email: user.email, name: user.name, role: user.role }
-}
-
-// Role retrieved from token (no DB query)
-async session({ session, token }) {
-  session.user.role = token.role as string
-  return session
-}
-```
-
-### Protected Routes
-
-- **Admin Routes**: `/admin/*` - Requires ADMIN role
-- **Authenticated Routes**: Most pages require authentication
-- **Public Routes**: `/login`, `/signup`
+To re-enable authentication:
+1. Uncomment authentication code in `lib/auth-options.ts`
+2. Uncomment authentication checks in `lib/admin-check.ts`
+3. Remove auto-sign-in from `app/login/page.tsx`
+4. Update API routes to check authentication
 
 ---
 
@@ -288,26 +339,68 @@ Application header with:
 - Sign out functionality
 - Responsive design
 
-### Design Components
+### Creator Components
 
-#### `svg-editor.tsx`
-Interactive SVG editor for:
-- Viewing SVG designs
-- Editing text elements
-- Changing colors
-- Adding logos and patterns
+#### `enhanced-creator-client.tsx`
+Enhanced design creator with:
+- **File Uploads**: PNG mask and SVG boundaries
+- **Template Management**: Add templates from library
+- **Template Positioning**: Drag-and-drop with sliders
+- **Design Saving**: Save/load/edit/delete designs
+- **SVG Object Detection**: Automatic layer detection
+- **Boundary Constraints**: Templates stay within SVG boundaries
 
-#### `creator-client.tsx`
-Main design creator component:
-- Template selection
-- Layer configuration
-- Variant generation
-- Design preview
+**Key Features**:
+- Gallery view for saved designs
+- Editor view with live preview
+- Template selector dialog
+- Position controls (X, Y, width, height)
+- Flip horizontal functionality
+- Color picker for shirt colors
+
+#### `template-selector.tsx`
+Template browser component:
+- Browse templates from database
+- Search functionality
+- SVG preview display
+- One-click template addition
+
+### Template Components
+
+#### `templates-client.tsx`
+Template management interface:
+- Create/edit/delete templates
+- Upload template files (.ai, .jpeg, .png, .svg)
+- SVG layer parsing
+- Template preview
+
+#### `template-layer-editor.tsx`
+Layer editing interface:
+- Edit text content for text layers
+- Change colors (fill/stroke) for graphic layers
+- Live preview of changes
+- Save modified layer data
+
+**Features**:
+- Two-tab interface (Text / Colors)
+- Real-time SVG modification
+- Color picker with hex input
+- Layer count display
+
+### File Upload Component
+
+#### `file-upload.tsx`
+Universal file upload component:
+- Supports both AWS S3 and local storage
+- Automatic fallback to local storage
+- Progress indicators
+- File size validation
+- Multipart upload for large files
 
 ### UI Components
 
 All UI components are from **shadcn/ui**:
-- Button, Input, Card, Dialog, Sheet, etc.
+- Button, Input, Card, Dialog, Sheet, Tabs, Slider, etc.
 - Located in `components/ui/`
 - Fully customizable with Tailwind CSS
 
@@ -319,18 +412,77 @@ All UI components are from **shadcn/ui**:
 
 #### `POST /api/auth/[...nextauth]`
 NextAuth.js handler for authentication.
+**Note**: Currently disabled for development.
 
-### User Management
+### Creator Design Endpoints
 
-#### `GET /api/users`
-Get all users (Admin only)
-- Requires: ADMIN role
-- Returns: Array of users
+#### `GET /api/creator-designs`
+Get all saved designs for current user
+- Returns: Array of saved designs
 
-#### `PATCH /api/users`
-Update user role (Admin only)
-- Body: `{ userId: string, role: 'ADMIN' | 'USER' }`
-- Requires: ADMIN role
+#### `POST /api/creator-designs`
+Save a new design
+- Body: `{ name, designData, previewImage, apparelType, schoolId?, teamId?, projectId?, itemId? }`
+- Returns: Created design object
+
+#### `GET /api/creator-designs/[id]`
+Get a specific design
+- Returns: Design object
+
+#### `PATCH /api/creator-designs/[id]`
+Update a design
+- Body: `{ name?, designData?, previewImage?, apparelType? }`
+- Returns: Updated design object
+
+#### `DELETE /api/creator-designs/[id]`
+Delete a design
+- Returns: Success message
+
+### Template Endpoints
+
+#### `GET /api/templates`
+List all templates
+- Returns: Array of templates with layer counts
+
+#### `POST /api/templates`
+Create a new template
+- Body: `{ name, category, filePath?, fileIsPublic?, svgPath?, svgIsPublic?, layerData?, description? }`
+- **Note**: `filePath` is now optional
+- Returns: Created template
+
+#### `PATCH /api/templates/[id]`
+Update a template
+- Body: `{ name?, category?, filePath?, layerData?, ... }`
+- Returns: Updated template
+
+#### `POST /api/templates/parse-svg`
+Parse SVG file to extract layers
+- Body: `{ svgContent }`
+- Returns: `{ parsed: { layers: [...] } }`
+
+### File Upload Endpoints
+
+#### `POST /api/upload/presigned`
+Get presigned URL for S3 upload (or local storage endpoint)
+- Body: `{ fileName, contentType, isPublic }`
+- Returns: `{ uploadUrl, cloud_storage_path }`
+- **Auto-fallback**: Uses local storage if AWS not configured
+
+#### `POST /api/upload/local`
+Upload file to local storage
+- FormData: `{ file, isPublic }`
+- Returns: `{ cloud_storage_path, url }`
+- **Only works when**: `USE_LOCAL_STORAGE=true` or AWS not configured
+
+#### `POST /api/upload/file-url`
+Get file URL (S3 or local)
+- Body: `{ cloud_storage_path, isPublic }`
+- Returns: `{ url }`
+
+#### Multipart Upload Endpoints
+- `POST /api/upload/multipart/initiate` - Start multipart upload
+- `POST /api/upload/multipart/part` - Upload a part
+- `POST /api/upload/multipart/complete` - Complete upload
 
 ### Organization Endpoints
 
@@ -363,11 +515,6 @@ Update user role (Admin only)
 - `GET /api/items/[id]` - Get item details
 - `POST /api/items/[id]/variants/generate` - Generate variants
 
-#### Templates
-- `GET /api/templates` - List templates
-- `POST /api/templates` - Create template
-- `POST /api/templates/parse-svg` - Parse SVG file
-
 #### Logos, Patterns, Fonts, Colors, Embellishments
 - `GET /api/[resource]` - List all
 - `POST /api/[resource]` - Create
@@ -388,32 +535,6 @@ Update user role (Admin only)
 - `POST /api/orders` - Create order
 - `GET /api/orders/[id]` - Get order details
 
-### File Upload Endpoints
-
-#### `POST /api/upload/presigned`
-Get presigned URL for direct S3 upload
-- Returns: `{ url: string, key: string }`
-
-#### `POST /api/upload/multipart/initiate`
-Initiate multipart upload for large files
-
-#### `POST /api/upload/multipart/part`
-Upload a part of multipart upload
-
-#### `POST /api/upload/multipart/complete`
-Complete multipart upload
-
-### Bridge Endpoints
-
-#### `GET /api/bridge/jobs`
-Get pending bridge jobs
-
-#### `GET /api/bridge/jobs/[id]`
-Get job status
-
-#### `POST /api/bridge/upload`
-Upload completed .AI file from bridge
-
 ---
 
 ## Database Schema
@@ -421,13 +542,64 @@ Upload completed .AI file from bridge
 ### User Model
 ```prisma
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  creatorDesigns CreatorDesign[]
+}
+```
+
+### CreatorDesign Model (New)
+```prisma
+model CreatorDesign {
+  id           String    @id @default(cuid())
+  name         String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId     String?
+  school       School?   @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  teamId       String?
+  team         Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  projectId    String?
+  project      Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  itemId       String?
+  item         Item?     @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  designData   String    @db.Text // JSON string of design configuration
+  previewImage String?   // URL to a preview image
+  apparelType  String    @default("tshirt")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([teamId])
+  @@index([projectId])
+  @@index([itemId])
+}
+```
+
+### Template Model (Updated)
+```prisma
+model Template {
+  id           String   @id @default(cuid())
+  name         String
+  category     String
+  filePath     String?  // Now optional
+  fileIsPublic Boolean  @default(false)
+  svgPath      String?
+  svgIsPublic  Boolean  @default(false)
+  layerData    String?  @db.Text // JSON string with layer information
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  items        Item[]
 }
 ```
 
@@ -438,7 +610,7 @@ model User {
 - **Item**: Design template, belongs to a Project
 
 ### Design Asset Models
-- **Template**: SVG template files
+- **Template**: Template files (.ai, .jpeg, .png, .svg)
 - **Logo**: Logo files
 - **Pattern**: Pattern files
 - **Font**: Font definitions
@@ -500,6 +672,163 @@ Quick access to design assets:
 
 ---
 
+## File Storage System
+
+### Overview
+
+The system supports two storage backends:
+1. **AWS S3** (primary) - Cloud storage
+2. **Local Storage** (fallback) - Filesystem storage
+
+### Storage Selection
+
+The system automatically selects storage based on configuration:
+
+1. **If `USE_LOCAL_STORAGE=true`**: Always uses local storage
+2. **If `AWS_BUCKET_NAME` not set**: Uses local storage
+3. **If AWS configured**: Uses AWS S3
+4. **If AWS fails**: Automatically falls back to local storage
+
+### Local Storage
+
+**Location**: `public/uploads/`
+- Private files: `public/uploads/`
+- Public files: `public/uploads/public/`
+
+**URLs**: Files accessible at `http://localhost:3000/uploads/...`
+
+**Features**:
+- Automatic directory creation
+- No external dependencies
+- Perfect for development
+- Files served directly by Next.js
+
+### AWS S3 Storage
+
+**Configuration**:
+- Bucket name: `AWS_BUCKET_NAME`
+- Region: `AWS_REGION`
+- Folder prefix: `AWS_FOLDER_PREFIX`
+- Credentials: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+
+**Features**:
+- Presigned URLs for direct uploads
+- Multipart upload support for large files
+- Public and private file support
+- Automatic URL generation
+
+### File Upload Component
+
+The `FileUpload` component automatically:
+- Detects storage mode
+- Uses appropriate upload method
+- Handles both single-part and multipart uploads
+- Shows progress indicators
+- Validates file sizes
+
+---
+
+## Template System
+
+### Template Creation
+
+Templates can be created with:
+- **Name** (required)
+- **Category** (required)
+- **Template File** (optional): `.ai`, `.jpeg`, `.jpg`, `.png`, or `.svg`
+- **SVG Preview File** (optional): For layer editing
+- **Description** (optional)
+
+### Template Layer Editor
+
+**Access**: Click "Edit Layers" button on templates with SVG files
+
+**Features**:
+- **Text Editing**: Edit text content for text layers
+- **Color Editing**: Change fill and stroke colors
+- **Live Preview**: See changes in real-time
+- **Save Changes**: Persist modifications to database
+
+**Workflow**:
+1. Create template with SVG file
+2. System automatically parses layers
+3. Click "Edit Layers" to open editor
+4. Make changes to text/colors
+5. Preview updates automatically
+6. Save changes to update template
+
+### Template Library
+
+Templates are stored in the database and accessible from:
+- **Templates Page**: `/templates` - Full management interface
+- **Right Sidebar**: Quick access link
+- **Creator Tool**: Browse and add templates to designs
+
+---
+
+## Creator Tool
+
+### Overview
+
+The Enhanced Creator is a powerful design tool for creating custom apparel designs.
+
+### Features
+
+#### File Management
+- **PNG Mask**: Upload PNG file for color application (optional)
+- **SVG Boundaries**: Upload SVG file that defines design boundaries (required)
+- **Automatic Detection**: Detects layers and objects in SVG
+- **Apparel Detection**: Identifies t-shirt, hoodie, etc. in SVG
+
+#### Template Management
+- **Add Templates**: Browse and select from template library
+- **Template Positioning**: 
+  - Drag-and-drop in preview
+  - Slider controls for precise positioning
+  - X/Y position (0-100%)
+  - Width/Height (5-50%)
+  - Boundary constraints
+- **Template Customization**:
+  - Upload custom logo (SVG)
+  - Edit text content
+  - Flip horizontally
+  - Adjust size and position
+
+#### Design Saving
+- **Save Designs**: Save complete design configurations
+- **Load Designs**: Load saved designs for editing
+- **Update Designs**: Modify existing designs
+- **Delete Designs**: Remove unwanted designs
+- **Gallery View**: Browse all saved designs
+
+### Workflow
+
+1. **Upload Files**:
+   - Upload SVG boundaries file
+   - Optionally upload PNG mask
+
+2. **Add Templates**:
+   - Click "Add Template" in Templates tab
+   - Browse template library
+   - Select template to add
+
+3. **Position Templates**:
+   - Click "Select" on template card
+   - Use sliders or drag in preview
+   - Adjust width/height as needed
+
+4. **Customize**:
+   - Edit text content
+   - Upload custom logos
+   - Flip templates if needed
+
+5. **Save Design**:
+   - Enter design name
+   - Click "Save Design"
+   - Design saved to database
+
+---
+
 ## Development Workflow
 
 ### Running the Development Server
@@ -552,43 +881,76 @@ npx prisma migrate dev --name migration_name
 
 ### Authentication Issues
 
-**Problem**: Login fails with authentication error
+**Problem**: Login fails or authentication errors
 
 **Solutions**:
-1. Check `NEXTAUTH_SECRET` is set in `.env`
-2. Verify `NEXTAUTH_URL` matches your application URL
-3. Ensure database connection is working
-4. Check user exists in database with correct password hash
+1. **Development Mode**: Authentication is disabled - auto-sign-in should work
+2. If re-enabled: Check `NEXTAUTH_SECRET` is set in `.env`
+3. Verify `NEXTAUTH_URL` matches your application URL
+4. Ensure database connection is working
 5. Clear browser cookies and try again
-
-**Recent Fix**: Authentication now stores role in JWT token instead of querying database on every session access.
-
-### Database Connection Issues
-
-**Problem**: Cannot connect to database
-
-**Solutions**:
-1. Verify `DATABASE_URL` in `.env` is correct
-2. Check PostgreSQL is running
-3. Ensure database exists
-4. Run `npx prisma db push` to sync schema
 
 ### File Upload Issues
 
-**Problem**: Files not uploading to S3
+**Problem**: "Failed to generate upload url" error
 
 **Solutions**:
-1. Verify AWS credentials in `.env`
-2. Check S3 bucket exists and is accessible
-3. Verify bucket permissions
-4. Check `AWS_REGION` matches bucket region
+1. **Check Storage Mode**: 
+   - If `USE_LOCAL_STORAGE=true`, local storage is used
+   - If AWS not configured, automatically uses local storage
+2. **For AWS**: Verify AWS credentials in `.env`
+3. **For Local**: Ensure `public/uploads/` directory exists
+4. Check server logs for specific error messages
+
+**Problem**: Files not uploading
+
+**Solutions**:
+1. Check file size limits (default 100MB for single-part)
+2. Verify file type is accepted
+3. Check browser console for errors
+4. Verify storage backend is working
+
+### Database Issues
+
+**Problem**: Creator design save fails
+
+**Solutions**:
+1. Run `npx prisma db push` to sync schema
+2. Verify `CreatorDesign` model exists in schema
+3. Check database connection
+4. Ensure mock user exists (auto-created on first save)
+
+**Problem**: Template creation fails
+
+**Solutions**:
+1. Verify `filePath` is optional (can be null)
+2. Check database schema is up to date
+3. Run `npx prisma generate` to regenerate client
+
+### Template Layer Editor Issues
+
+**Problem**: Layers not showing
+
+**Solutions**:
+1. Ensure template has `svgPath` and `layerData`
+2. Upload SVG file when creating template
+3. System automatically parses layers on SVG upload
+4. Check browser console for parsing errors
+
+**Problem**: Changes not saving
+
+**Solutions**:
+1. Verify template has valid `layerData`
+2. Check API route is accessible
+3. Check browser console for errors
+4. Verify database connection
 
 ### Sidebar Not Showing
 
 **Problem**: Navigation items not appearing
 
 **Solutions**:
-1. Check user role is correctly set
+1. Check user role is correctly set (or authentication disabled)
 2. Verify session is active
 3. Check browser console for errors
 4. Ensure `left-sidebar.tsx` has correct navigation arrays
@@ -627,6 +989,7 @@ npx prisma migrate dev --name migration_name
 - Prisma: https://www.prisma.io/docs
 - Tailwind CSS: https://tailwindcss.com/docs
 - shadcn/ui: https://ui.shadcn.com/
+- AWS SDK: https://docs.aws.amazon.com/sdk-for-javascript/
 
 ---
 
@@ -634,12 +997,15 @@ npx prisma migrate dev --name migration_name
 
 ### Latest Changes (Current)
 
-- ✅ Fixed authentication errors (JWT role storage)
-- ✅ Updated sidebar navigation (removed design assets from left, added logos to right)
-- ✅ Created party mode Cursor rule
-- ✅ Added development server restart script
-- ✅ Fixed svg-template-parser import issue
-- ✅ Updated type definitions for NextAuth
+- ✅ Template layer editor with live preview
+- ✅ Template selector in creator tool
+- ✅ Enhanced file upload support (.ai, .jpeg, .png, .svg)
+- ✅ Creator design save functionality
+- ✅ Local file storage fallback
+- ✅ Template positioning controls
+- ✅ Authentication disabled for development
+- ✅ AWS connection verified and working
+- ✅ Improved error handling throughout
 
 ---
 
@@ -654,6 +1020,4 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: January 2025
-**Documentation Version**: 1.0.0
-
-
+**Documentation Version**: 2.0.0

@@ -5,12 +5,15 @@ An automated apparel design management system with Adobe Illustrator integration
 ## 🎯 Features
 
 - **Dynamic Layer-Based Configuration**: Automatically detects and configures layers from SVG templates
+- **Enhanced Creator Tool**: Interactive design creator with template library integration
+- **Template Layer Editor**: Edit text and colors with live preview
+- **Template Positioning**: Drag-and-drop positioning with boundary constraints
 - **Design Variant Generation**: Create multiple design variations with different colors, text, logos, patterns, and embellishments
 - **Adobe Illustrator Bridge**: Automated integration to generate final .AI files from variants
-- **Design Asset Library**: Manage colors (Pantone), fonts, patterns, embellishments, and logos
+- **Design Asset Library**: Manage colors (Pantone), fonts, patterns, embellishments, logos, and templates
 - **Organization Hierarchy**: Schools → Teams → Projects → Items
-- **Cloud Storage**: S3 integration for all file uploads and storage
-- **Authentication**: Secure user authentication with NextAuth.js
+- **Cloud Storage**: AWS S3 integration with local storage fallback
+- **Authentication**: Secure user authentication with NextAuth.js (currently disabled for development)
 
 ## 📁 Project Structure
 
@@ -22,11 +25,12 @@ apparel_design_manager/
 │   ├── lib/               # Utility functions and configurations
 │   ├── prisma/            # Database schema
 │   └── public/            # Static assets
+│       └── uploads/       # Local file uploads (gitignored)
 ├── bridge_utility/        # Adobe Illustrator bridge utility
 │   ├── index.js           # Main bridge application
 │   ├── illustrator-script.jsx  # Illustrator automation script
 │   └── config.json        # Bridge configuration
-└── Documentation files (.md, .pdf)
+└── Documentation files (.md)
 ```
 
 ## 🚀 Getting Started
@@ -35,8 +39,8 @@ apparel_design_manager/
 
 - Node.js 18+ and Yarn
 - PostgreSQL database
-- AWS S3 bucket (for file storage)
-- Adobe Illustrator (for bridge utility)
+- AWS S3 bucket (optional - local storage available)
+- Adobe Illustrator (for bridge utility - optional)
 
 ### Web Application Setup
 
@@ -53,11 +57,15 @@ apparel_design_manager/
    NEXTAUTH_SECRET="your-secret-key-here"
    NEXTAUTH_URL="http://localhost:3000"
    
+   # AWS S3 (Optional - uses local storage if not set)
    AWS_BUCKET_NAME="your-bucket-name"
    AWS_FOLDER_PREFIX="apparel-designs/"
    AWS_ACCESS_KEY_ID="your-access-key"
    AWS_SECRET_ACCESS_KEY="your-secret-key"
    AWS_REGION="us-east-1"
+   
+   # Force Local Storage (Optional)
+   USE_LOCAL_STORAGE=true
    ```
 
 3. **Set up database:**
@@ -121,13 +129,41 @@ The bridge utility runs on your local machine and automates Adobe Illustrator to
 
 ### 2. Configure Design Assets
 
+- Upload **Templates** (.ai, .jpeg, .png, .svg) - all optional
 - Upload **Patterns** (e.g., camouflage, stripes)
 - Upload **Embellishments** (e.g., graphics, badges)
 - Manage **Fonts** (system or custom)
 - Manage **Colors** (Pantone or custom)
 - Upload **Logos** for teams, schools, or projects
 
-### 3. Create Design Variants
+### 3. Edit Template Layers
+
+1. Navigate to Templates page (right sidebar)
+2. Create template with SVG file
+3. Click "Edit Layers" button
+4. Edit text content or colors
+5. See live preview of changes
+6. Save changes
+
+### 4. Create Designs in Creator
+
+1. Navigate to Creator page
+2. Upload SVG boundaries file
+3. Add templates from library:
+   - Click "Add Template" in Templates tab
+   - Browse and select template
+4. Position templates:
+   - Use sliders or drag in preview
+   - Adjust X, Y, width, height
+5. Customize:
+   - Edit text content
+   - Upload custom logos
+   - Flip templates
+6. Save design:
+   - Enter design name
+   - Click "Save Design"
+
+### 5. Create Design Variants
 
 1. Navigate to an Item detail page
 2. Go to the **Configuration** tab
@@ -140,7 +176,7 @@ The bridge utility runs on your local machine and automates Adobe Illustrator to
 4. Click **"Generate Variants"**
 5. View generated SVG previews in the **Variants** tab
 
-### 4. Generate Final Files
+### 6. Generate Final Files
 
 1. Select variants you want to produce
 2. Click **"Generate Final Files"**
@@ -157,8 +193,8 @@ The bridge utility runs on your local machine and automates Adobe Illustrator to
 
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend**: Next.js API Routes, Prisma ORM, PostgreSQL
-- **Authentication**: NextAuth.js
-- **File Storage**: AWS S3 (via AWS SDK v3)
+- **Authentication**: NextAuth.js (currently disabled for development)
+- **File Storage**: AWS S3 (with local storage fallback)
 - **Adobe Integration**: Adobe Illustrator scripting (ExtendScript)
 - **Automation**: Node.js, Axios, fs-extra
 
@@ -172,6 +208,9 @@ The bridge utility runs on your local machine and automates Adobe Illustrator to
   - API endpoint reference
   - Database schema
   - Navigation structure
+  - File storage system
+  - Template system
+  - Creator tool guide
   - Development workflow
   - Troubleshooting guide
 
@@ -186,12 +225,43 @@ The bridge utility runs on your local machine and automates Adobe Illustrator to
 
 ## 🔒 Security Notes
 
-- Never commit `.env` files
+- Never commit `.env` files (now in `.gitignore`)
 - Keep AWS credentials secure
 - Use environment variables for all sensitive data
 - Database credentials should be stored securely
+- `.env` file is excluded from git commits
 
 ## 🐛 Troubleshooting
+
+### File Upload Issues
+
+**Problem**: "Failed to generate upload url"
+
+**Solutions**:
+1. Check if `USE_LOCAL_STORAGE=true` is set
+2. If using AWS, verify credentials are correct
+3. System automatically falls back to local storage
+4. Check `public/uploads/` directory exists
+
+### Creator Design Save Issues
+
+**Problem**: Design save fails
+
+**Solutions**:
+1. Run `npx prisma db push` to sync schema
+2. Verify `CreatorDesign` model exists
+3. Check database connection
+4. Mock user is auto-created on first save
+
+### Template Layer Editor Issues
+
+**Problem**: Layers not showing or changes not saving
+
+**Solutions**:
+1. Ensure template has SVG file uploaded
+2. Verify `layerData` exists in template
+3. Check browser console for errors
+4. Ensure template has valid SVG path
 
 ### Bridge Not Finding Jobs
 
@@ -226,3 +296,8 @@ Developed for Eira Designs apparel automation.
 ## 🆘 Support
 
 For issues or questions, please contact the development team.
+
+---
+
+**Last Updated**: January 2025
+**Version**: 2.0.0
