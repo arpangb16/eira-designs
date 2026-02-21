@@ -37,3 +37,5 @@ fi
 echo ""
 echo "Test complete. If AWS_BUCKET_NAME is not set, uploads should use local storage."
 
+
+
