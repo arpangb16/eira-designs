@@ -836,11 +836,14 @@ The Enhanced Creator is a powerful design tool for creating custom apparel desig
 ```bash
 # Option 1: Standard npm/yarn
 cd apparel_design_manager/nextjs_space
+npm install --legacy-peer-deps  # First time setup
 npm run dev
 
-# Option 2: Use convenience script
+# Option 2: Use convenience script (handles dependencies automatically)
 ./run_Eira.sh
 ```
+
+**Note**: Use `--legacy-peer-deps` flag when installing dependencies to resolve TypeScript ESLint peer dependency conflicts.
 
 ### Code Structure
 
@@ -944,6 +947,22 @@ npx prisma migrate dev --name migration_name
 2. Check API route is accessible
 3. Check browser console for errors
 4. Verify database connection
+
+### NPM Dependency Issues
+
+**Problem**: `next: not found` or `ERESOLVE could not resolve` errors
+
+**Solutions**:
+1. **Install Dependencies**: Run `npm install --legacy-peer-deps` in `apparel_design_manager/nextjs_space`
+2. **Missing node_modules**: If `node_modules` doesn't exist, dependencies need to be installed
+3. **Peer Dependency Conflicts**: Use `--legacy-peer-deps` flag to bypass strict peer dependency checks
+4. **Prisma Client**: After installing, run `npx prisma generate` to generate Prisma client
+5. **Use Convenience Script**: The `run_Eira.sh` script automatically handles dependency installation
+
+**Common Error Messages**:
+- `sh: 1: next: not found` → Dependencies not installed
+- `ERESOLVE could not resolve` → Peer dependency conflict (use `--legacy-peer-deps`)
+- `Cannot find module '@prisma/client'` → Run `npx prisma generate`
 
 ### Sidebar Not Showing
 

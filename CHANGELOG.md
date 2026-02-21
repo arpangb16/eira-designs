@@ -4,6 +4,12 @@ All notable changes to the Eira Designs project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **NPM Dependency Installation**: Fixed `next: not found` error by installing dependencies with `--legacy-peer-deps` flag
+  - Updated `run_Eira.sh` script to automatically use `--legacy-peer-deps` when installing dependencies
+  - Resolved TypeScript ESLint peer dependency conflicts
+  - Added troubleshooting documentation for npm dependency issues
+
 ### Added
 - **Template Layer Editor** (`app/templates/_components/template-layer-editor.tsx`)
   - Full-featured editor for editing template layers

@@ -20,7 +20,8 @@ cd "$(dirname "$0")/apparel_design_manager/nextjs_space" || exit 1
 # Check if node_modules exists, if not, install dependencies
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
-    npm install
+    echo "💡 Using --legacy-peer-deps to resolve dependency conflicts..."
+    npm install --legacy-peer-deps
 fi
 
 echo "🚀 Starting Next.js dev server..."
@@ -29,6 +30,8 @@ echo ""
 
 # Start the dev server
 npm run dev
+
+
 
 
 
