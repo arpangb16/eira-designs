@@ -22,7 +22,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     return <>{children}</>;
   }
 
-  const isAdmin = session?.user?.role === 'ADMIN';
+  const isAdmin = !session || session?.user?.role === 'ADMIN';
 
   return (
     <div className="relative flex min-h-screen">

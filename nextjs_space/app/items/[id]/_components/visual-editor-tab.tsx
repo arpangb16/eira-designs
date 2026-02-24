@@ -235,21 +235,26 @@ export default function VisualEditorTab({
 
   const fetchSvgPreview = async () => {
     try {
-      const response = await fetch('/api/upload/file-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          cloud_storage_path: templateSvgPath, 
-          isPublic: templateSvgIsPublic 
-        }),
-      });
-      if (response.ok) {
+      let svgUrl: string;
+      if (templateSvgPath.startsWith('/creator/')) {
+        svgUrl = typeof window !== 'undefined' ? `${window.location.origin}${templateSvgPath}` : templateSvgPath;
+      } else {
+        const response = await fetch('/api/upload/file-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cloud_storage_path: templateSvgPath,
+            isPublic: templateSvgIsPublic,
+          }),
+        });
+        if (!response.ok) return;
         const { url } = await response.json();
-        const svgResponse = await fetch(url);
-        const svgContent = await svgResponse.text();
-        setOriginalSvg(svgContent); // Store original
-        setPreviewSvg(svgContent);   // Initialize preview
+        svgUrl = url;
       }
+      const svgResponse = await fetch(svgUrl);
+      const svgContent = await svgResponse.text();
+      setOriginalSvg(svgContent);
+      setPreviewSvg(svgContent);
     } catch (error) {
       console.error('Failed to fetch SVG preview:', error);
     }

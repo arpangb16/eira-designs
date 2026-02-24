@@ -14,7 +14,6 @@ import {
   Grid3x3,
   Palette,
   Sparkles,
-  Wand2,
   Image,
   Menu,
   ChevronLeft,
@@ -28,7 +27,6 @@ const adminNavigation = [
   { name: 'Patterns', href: '/patterns', icon: Grid3x3 },
   { name: 'Colors', href: '/colors', icon: Palette },
   { name: 'Embellishments', href: '/embellishments', icon: Sparkles },
-  { name: 'Creator', href: '/creator', icon: Wand2 },
 ];
 
 // Regular users don't see the design library sidebar
@@ -39,7 +37,7 @@ export function RightSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { data: session } = useSession() || {};
   
-  const isAdmin = session?.user?.role === 'ADMIN';
+  const isAdmin = !session || session?.user?.role === 'ADMIN';
   const navigation = isAdmin ? adminNavigation : userNavigation;
 
   // Don't render right sidebar for non-admin users

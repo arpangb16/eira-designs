@@ -66,6 +66,9 @@ apparel_design_manager/
    
    # Force Local Storage (Optional)
    USE_LOCAL_STORAGE=true
+
+   # Bypass auth and treat as admin (for local dev)
+   BYPASS_AUTH=true
    ```
 
 3. **Set up database:**

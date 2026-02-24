@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -27,9 +27,13 @@ import {
   Move,
   ChevronLeft,
   ShoppingCart,
+  FolderPlus,
+  FolderInput,
+  Plus,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
+import { FileUpload } from '@/components/file-upload';
 import {
   parseTemplate,
   applyCustomizations,
@@ -39,8 +43,8 @@ import {
   type ColorElement,
 } from '@/lib/svg-template-parser';
 
-// Template definitions
-const templateDefinitions = [
+// Built-in 9 templates (always available, no API needed)
+const BUILTIN_TEMPLATE_DEFS = [
   { id: '101', name: 'Cardinal', svgPath: '/creator/images/101.svg' },
   { id: '102', name: 'Classic', svgPath: '/creator/images/102.svg' },
   { id: '103', name: 'Circle Badge', svgPath: '/creator/images/103.svg' },
@@ -51,6 +55,13 @@ const templateDefinitions = [
   { id: '110', name: 'Amberstone', svgPath: '/creator/images/110.svg' },
   { id: '111', name: 'Modern', svgPath: '/creator/images/111.svg' },
 ];
+
+interface CreatorTemplateDef {
+  id: string;
+  name: string;
+  svgPath: string;
+  isPublic?: boolean;
+}
 
 // T-shirt colors
 const shirtColors = [
@@ -104,44 +115,110 @@ export default function CreatorClient() {
   // Editor state
   const [editorState, setEditorState] = useState<EditorState>(defaultEditorState);
   const [exporting, setExporting] = useState(false);
+  const [addingToTemplate, setAddingToTemplate] = useState(false);
+  const [migratingAll, setMigratingAll] = useState(false);
+  const [addImageOpen, setAddImageOpen] = useState(false);
+  const [newImageName, setNewImageName] = useState('');
+  const [addingImage, setAddingImage] = useState(false);
   
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exportCanvasRef = useRef<HTMLCanvasElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // Load and parse all templates on mount
-  useEffect(() => {
-    const loadTemplates = async () => {
-      setLoading(true);
-      const loadedTemplates: TemplateConfig[] = [];
-      
-      for (const def of templateDefinitions) {
-        try {
-          const response = await fetch(def.svgPath);
-          const content = await response.text();
-          const config = parseTemplate(content, def.id, def.name, def.svgPath);
-          loadedTemplates.push(config);
-        } catch (error) {
-          console.error(`Failed to load template ${def.id}:`, error);
+  // Load templates: 9 built-in (always) + any custom from API
+  const loadTemplates = useCallback(async () => {
+    setLoading(true);
+    const loadedTemplates: TemplateConfig[] = [];
+
+    // 1. Load built-in 9 templates (always available)
+    for (const def of BUILTIN_TEMPLATE_DEFS) {
+      try {
+        const response = await fetch(def.svgPath);
+        const content = await response.text();
+        const config = parseTemplate(content, def.id, def.name, def.svgPath);
+        loadedTemplates.push(config);
+      } catch (error) {
+        console.error(`Failed to load template ${def.id}:`, error);
+      }
+    }
+
+    // 2. Fetch and load custom templates from API (added via "Add New Image")
+    try {
+      const res = await fetch('/api/creator/templates');
+      if (res.ok) {
+        const defs: CreatorTemplateDef[] = await res.json();
+        const builtinPaths = new Set(BUILTIN_TEMPLATE_DEFS.map((t) => t.svgPath));
+        for (const def of defs) {
+          if (builtinPaths.has(def.svgPath)) continue; // already loaded
+          try {
+            let svgUrl: string;
+            if (def.svgPath.startsWith('/creator/')) {
+              svgUrl = def.svgPath;
+            } else {
+              const urlRes = await fetch('/api/upload/file-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  cloud_storage_path: def.svgPath,
+                  isPublic: def.isPublic ?? true,
+                }),
+              });
+              if (!urlRes.ok) continue;
+              const { url } = await urlRes.json();
+              svgUrl = url;
+            }
+            const response = await fetch(svgUrl);
+            const content = await response.text();
+            const config = parseTemplate(content, def.id, def.name, def.svgPath);
+            loadedTemplates.push(config);
+          } catch (error) {
+            console.error(`Failed to load custom template ${def.id}:`, error);
+          }
         }
       }
-      
-      setTemplates(loadedTemplates);
-      setLoading(false);
-    };
-    
-    loadTemplates();
+    } catch (error) {
+      console.error('Failed to fetch custom templates:', error);
+      // Built-in 9 are already loaded, so we don't show error
+    }
+
+    setTemplates(loadedTemplates);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   // Load SVG content when template is selected
   useEffect(() => {
-    if (selectedTemplate) {
-      fetch(selectedTemplate.svgPath)
-        .then(res => res.text())
-        .then(content => setSvgContent(content))
-        .catch(err => console.error('Failed to load SVG:', err));
-    }
+    if (!selectedTemplate) return;
+    const loadSvg = async () => {
+      try {
+        let url: string;
+        if (selectedTemplate.svgPath.startsWith('/creator/')) {
+          url = selectedTemplate.svgPath;
+        } else {
+          const res = await fetch('/api/upload/file-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cloud_storage_path: selectedTemplate.svgPath,
+              isPublic: true,
+            }),
+          });
+          if (!res.ok) throw new Error('Failed to get SVG URL');
+          const { url: fileUrl } = await res.json();
+          url = fileUrl;
+        }
+        const response = await fetch(url);
+        const content = await response.text();
+        setSvgContent(content);
+      } catch (err) {
+        console.error('Failed to load SVG:', err);
+      }
+    };
+    loadSvg();
   }, [selectedTemplate]);
 
   // Select a template and open editor
@@ -376,12 +453,177 @@ export default function CreatorClient() {
     }
   };
 
+  // Add current template to Template library
+  const addToTemplate = async () => {
+    if (!selectedTemplate) return;
+    setAddingToTemplate(true);
+    try {
+      const res = await fetch('/api/creator/add-to-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedTemplate.id,
+          name: selectedTemplate.name,
+          svgPath: selectedTemplate.svgPath,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed');
+      }
+      toast({ title: 'Success', description: `${selectedTemplate.name} added to Templates!` });
+      router.push('/templates');
+      router.refresh();
+    } catch (error) {
+      console.error('Add to template error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add to Templates',
+        variant: 'destructive',
+      });
+    } finally {
+      setAddingToTemplate(false);
+    }
+  };
+
+  // Add new image as creator template (from upload)
+  const handleNewImageUpload = async (cloud_storage_path: string, isPublic: boolean) => {
+    if (!newImageName.trim()) {
+      toast({
+        title: 'Enter template name',
+        description: 'Please enter a template name before uploading.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setAddingImage(true);
+    try {
+      const res = await fetch('/api/creator/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newImageName.trim(),
+          cloud_storage_path,
+          isPublic,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed');
+      }
+      toast({ title: 'Success', description: `${newImageName} added as template!` });
+      setAddImageOpen(false);
+      setNewImageName('');
+      loadTemplates();
+    } catch (error) {
+      console.error('Add new image error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add template',
+        variant: 'destructive',
+      });
+    } finally {
+      setAddingImage(false);
+    }
+  };
+
+  // One-time migration: add all creator templates to Template library
+  const migrateAllToTemplates = async () => {
+    setMigratingAll(true);
+    try {
+      const res = await fetch('/api/creator/migrate-to-templates', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed');
+      }
+      toast({
+        title: 'Migration complete',
+        description: `Added ${data.created} templates. ${data.skipped} already existed.`,
+      });
+      router.push('/templates');
+      router.refresh();
+    } catch (error) {
+      console.error('Migrate error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to migrate',
+        variant: 'destructive',
+      });
+    } finally {
+      setMigratingAll(false);
+    }
+  };
+
   // Render Gallery View
   const renderGallery = () => (
     <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Design Templates</h1>
-        <p className="text-gray-600 mt-2">Choose a template to customize for your team</p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Design Templates</h1>
+          <p className="text-gray-600 mt-2">Choose a template to customize for your team</p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <Dialog open={addImageOpen} onOpenChange={(open) => {
+            if (!open) {
+              setNewImageName('');
+            }
+            setAddImageOpen(open);
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Image
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add New Template</DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  Upload an SVG file to add it as a creator template. It will be converted the same way as the existing 9 templates.
+                </p>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="template-name">Template Name</Label>
+                  <Input
+                    id="template-name"
+                    placeholder="e.g. My Design"
+                    value={newImageName}
+                    onChange={(e) => setNewImageName(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                <FileUpload
+                  label="SVG File"
+                  accept=".svg,image/svg+xml"
+                  isPublic={true}
+                  maxSize={10}
+                  onUploadComplete={handleNewImageUpload}
+                />
+                {addingImage && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Adding template...
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button
+            variant="outline"
+            onClick={migrateAllToTemplates}
+            disabled={migratingAll}
+          >
+            {migratingAll ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FolderInput className="h-4 w-4 mr-2" />
+            )}
+            {migratingAll ? 'Migrating...' : 'Migrate All to Templates'}
+          </Button>
+        </div>
       </div>
       
       {loading ? (
@@ -457,6 +699,19 @@ export default function CreatorClient() {
             <Button variant="outline" size="sm" onClick={resetDesign}>
               <RotateCcw className="h-4 w-4 mr-1" />
               Reset
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addToTemplate}
+              disabled={addingToTemplate}
+            >
+              {addingToTemplate ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <FolderPlus className="h-4 w-4 mr-1" />
+              )}
+              Add to Template
             </Button>
             <Button
               size="sm"

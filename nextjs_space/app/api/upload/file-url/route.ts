@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-options'
+import { getSession } from '@/lib/get-session'
 import { getFileUrl } from '@/lib/s3'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getSession()
     if (!session) {
       console.error('[FILE-URL] Unauthorized: No session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

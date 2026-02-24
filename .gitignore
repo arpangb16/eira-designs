@@ -14,6 +14,9 @@
 **/.yarn/install-state.gz
 dist
 target
+*.db
+.env
+.env.local
 out
 .deploy
 .logs

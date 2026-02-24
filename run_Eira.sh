@@ -15,7 +15,15 @@ pkill -f "next dev" 2>/dev/null || echo "✨ No Next.js dev processes found"
 sleep 2
 
 echo "🎈 Navigating to project directory..."
-cd "$(dirname "$0")/apparel_design_manager/nextjs_space" || exit 1
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -d "$SCRIPT_DIR/nextjs_space" ]; then
+  cd "$SCRIPT_DIR/nextjs_space" || exit 1
+elif [ -d "$SCRIPT_DIR/apparel_design_manager/nextjs_space" ]; then
+  cd "$SCRIPT_DIR/apparel_design_manager/nextjs_space" || exit 1
+else
+  echo "❌ Could not find nextjs_space directory"
+  exit 1
+fi
 
 # Check if node_modules exists, if not, install dependencies
 if [ ! -d "node_modules" ]; then

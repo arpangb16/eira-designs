@@ -1,13 +1,17 @@
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/get-session';
 
 export async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  
+  const session = await getSession();
+
   if (!session?.user?.id) {
     redirect('/login');
+  }
+
+  // When bypassing auth, mock user has ADMIN role
+  if (process.env.BYPASS_AUTH === 'true') {
+    return session;
   }
 
   const user = await prisma.user.findUnique({
@@ -23,8 +27,8 @@ export async function requireAdmin() {
 }
 
 export async function requireAuth() {
-  const session = await getServerSession(authOptions);
-  
+  const session = await getSession();
+
   if (!session?.user?.id) {
     redirect('/login');
   }

@@ -1,11 +1,9 @@
 generator client {
     provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/apparel_design_manager/nextjs_space/node_modules/.prisma/client"
 }
 
 datasource db {
-    provider = "postgresql"
+    provider = "sqlite"
     url      = env("DATABASE_URL")
 }
 
@@ -37,12 +35,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -103,7 +101,7 @@ model Project {
   team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   season       String?
   year         Int?
-  description  String?  @db.Text
+  description  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   items        Item[]
@@ -134,8 +132,8 @@ model Template {
   fileIsPublic Boolean  @default(false)
   svgPath      String?
   svgIsPublic  Boolean  @default(false)
-  layerData    String?  @db.Text
-  description  String?  @db.Text
+  layerData    String?
+  description  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   items        Item[]
@@ -157,8 +155,8 @@ model DesignInstruction {
   id              String          @id @default(cuid())
   itemId          String
   item            Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  instruction     String          @db.Text
-  parsedData      String?         @db.Text
+  instruction     String
+  parsedData      String?
   status          String          @default("pending")
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -183,14 +181,14 @@ model Pattern {
   id                String   @id @default(cuid())
   name              String
   category          String   // "body", "inseam", "cuff", etc.
-  description       String?  @db.Text
+  description       String?
   filePath          String   // S3: pattern_body_stripes.ai
   fileIsPublic      Boolean  @default(false)
   svgPath           String?  // For web preview
   svgIsPublic       Boolean  @default(false)
   thumbnailPath     String?
   thumbnailIsPublic Boolean  @default(false)
-  colors            String?  @db.Text // JSON array of hex colors used in pattern
+  colors            String?   // JSON array of hex colors used in pattern
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -202,7 +200,7 @@ model Embellishment {
   id                String   @id @default(cuid())
   name              String
   category          String?  // "animal", "abstract", "team-specific"
-  description       String?  @db.Text
+  description       String?
   filePath          String   // S3: embellishment_eagle_claw.ai
   fileIsPublic      Boolean  @default(false)
   svgPath           String?
@@ -221,13 +219,13 @@ model DesignVariant {
   itemId          String
   item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   variantName     String
-  configuration   String   @db.Text // JSON: { bodyColor: "#FFD700", bodyPattern: "stripes", logoPosition: "A", ... }
+  configuration   String    // JSON: { bodyColor: "#FFD700", bodyPattern: "stripes", logoPosition: "A", ... }
   status          String   @default("preview") // "preview" | "selected" | "generating" | "generated" | "failed"
   previewSvgPath  String?
   previewIsPublic Boolean  @default(true)
   finalAiPath     String?
   finalAiIsPublic Boolean  @default(false)
-  errorMessage    String?  @db.Text
+  errorMessage    String?
   bridgeJobs      BridgeJob[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -288,7 +286,7 @@ model SchoolLogo {
 model Logo {
   id           String   @id @default(cuid())
   name         String
-  description  String?  @db.Text
+  description  String?
   logoPath     String
   logoIsPublic Boolean  @default(false)
   
@@ -318,7 +316,7 @@ model BridgeJob {
   variant           DesignVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   status            String   @default("pending") // "pending" | "processing" | "completed" | "failed"
   priority          Int      @default(0) // Higher priority jobs processed first
-  errorMessage      String?  @db.Text
+  errorMessage      String?
   startedAt         DateTime?
   completedAt       DateTime?
   createdAt         DateTime @default(now())
@@ -339,7 +337,7 @@ model CreatorDesign {
   teamId          String?
   projectId       String?
   itemId          String?
-  designData      String   @db.Text // JSON: shirt color, svg colors, text, logo, etc.
+  designData      String    // JSON: shirt color, svg colors, text, logo, etc.
   previewImage    String?  // Base64 or S3 path for preview
   apparelType     String   @default("tshirt") // tshirt, singlet, shorts, etc.
   createdAt       DateTime @default(now())
@@ -369,12 +367,12 @@ model CartItem {
   creatorDesignId String?
   creatorDesign   CreatorDesign? @relation(fields: [creatorDesignId], references: [id], onDelete: SetNull)
   designName      String
-  designData      String         @db.Text // Copy of design at time of adding to cart
+  designData      String          // Copy of design at time of adding to cart
   apparelType     String         @default("tshirt")
-  sizes           String         @db.Text // JSON: { "S": 2, "M": 5, "L": 3, ... }
+  sizes           String          // JSON: { "S": 2, "M": 5, "L": 3, ... }
   unitPrice       Float          @default(25.00)
   sendToTeam      Boolean        @default(false)
-  teamMembers     String?        @db.Text // JSON: [{ name, email }]
+  teamMembers     String?         // JSON: [{ name, email }]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -408,14 +406,14 @@ model OrderItem {
   orderId         String
   order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   designName      String
-  designData      String        @db.Text
+  designData      String
   apparelType     String
-  sizes           String        @db.Text // JSON: { "S": 2, "M": 5, ... }
+  sizes           String         // JSON: { "S": 2, "M": 5, ... }
   unitPrice       Float
   quantity        Int           // Total quantity across all sizes
   totalPrice      Float
   sendToTeam      Boolean       @default(false)
-  teamMembers     String?       @db.Text
+  teamMembers     String?
   addressId       String?
   address         OrderAddress? @relation(fields: [addressId], references: [id], onDelete: SetNull)
   createdAt       DateTime      @default(now())

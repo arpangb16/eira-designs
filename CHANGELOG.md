@@ -4,6 +4,36 @@ All notable changes to the Eira Designs project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Session 2026-02-24)
+- **Auth Bypass & Admin Default** (`BYPASS_AUTH` env var)
+  - `get-session.ts`: Returns mock admin session when `BYPASS_AUTH=true`
+  - Server session passed to `SessionProvider` for client-side admin view
+  - `auth-options.ts`: All logged-in users treated as admin (role always ADMIN)
+  - Default to admin view when no session (`!session || role === 'ADMIN'`)
+- **Creator Template Migration**
+  - "Add to Template" button in Creator editor (adds current template to Templates library)
+  - "Migrate All to Templates" button in Creator gallery (one-time migration of 9 built-in templates)
+  - POST `/api/creator/add-to-template` - add single creator template
+  - POST `/api/creator/migrate-to-templates` - migrate all creator templates
+- **Add New Image in Creator**
+  - "Add New Image" button in Creator gallery with dialog
+  - Upload SVG file, enter template name, creates Template record (category: Creator)
+  - GET `/api/creator/templates` - returns built-in 9 + custom templates from DB
+  - POST `/api/creator/templates` - create new creator template from upload
+  - Custom templates loaded from API; built-in 9 always load from static files
+- **Creator in Left Sidebar** - Added Creator to admin left navigation (after Projects)
+
+### Changed (Session 2026-02-24)
+- **run_Eira.sh** - Flexible path: tries `nextjs_space` then `apparel_design_manager/nextjs_space`
+- **Left/Right Sidebar** - Default to admin view when no session
+- **Right Sidebar** - Removed Creator from Design Library (Creator only in left sidebar)
+- **Templates Page** - Public paths (`/creator/`) fetch SVG directly; no file-url API
+- **Item Detail & Visual Editor** - Public paths (`/creator/`) fetch SVG directly for correct preview
+
+### Fixed (Session 2026-02-24)
+- **SVG Preview under Items** - Creator templates (`/creator/images/*.svg`) were incorrectly resolved via S3 file-url API; now fetched directly from app for correct display
+- **DialogTrigger** - Added missing import in creator-client.tsx
+
 ### Fixed
 - **NPM Dependency Installation**: Fixed `next: not found` error by installing dependencies with `--legacy-peer-deps` flag
   - Updated `run_Eira.sh` script to automatically use `--legacy-peer-deps` when installing dependencies

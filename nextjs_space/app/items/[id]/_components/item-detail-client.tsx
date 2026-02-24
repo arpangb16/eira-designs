@@ -118,28 +118,31 @@ export function ItemDetailClient({
 
   const fetchSvgPreview = async (path: string, isPublic: boolean) => {
     try {
-      const response = await fetch('/api/upload/file-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cloud_storage_path: path, isPublic }),
-      })
-      if (response.ok) {
+      let svgUrl: string
+      if (path.startsWith('/creator/')) {
+        svgUrl = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path
+      } else {
+        const response = await fetch('/api/upload/file-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cloud_storage_path: path, isPublic }),
+        })
+        if (!response.ok) return
         const { url } = await response.json()
-        // Fetch the SVG content
-        const svgResponse = await fetch(url)
-        const svgContent = await svgResponse.text()
-        setSvgPreview(svgContent)
-        
-        // Parse layers from template layerData
-        if (item.template?.layerData) {
-          try {
-            const parsed = JSON.parse(item.template.layerData)
-            if (parsed.layers) {
-              setSvgLayers(parsed.layers)
-            }
-          } catch (error) {
-            console.error('Failed to parse layer data:', error)
+        svgUrl = url
+      }
+      const svgResponse = await fetch(svgUrl)
+      const svgContent = await svgResponse.text()
+      setSvgPreview(svgContent)
+
+      if (item.template?.layerData) {
+        try {
+          const parsed = JSON.parse(item.template.layerData)
+          if (parsed.layers) {
+            setSvgLayers(parsed.layers)
           }
+        } catch (error) {
+          console.error('Failed to parse layer data:', error)
         }
       }
     } catch (error) {

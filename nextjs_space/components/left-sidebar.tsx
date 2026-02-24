@@ -28,6 +28,7 @@ const adminNavigation = [
   { name: 'Schools', href: '/schools', icon: School },
   { name: 'Teams', href: '/teams', icon: Users },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
+  { name: 'Creator', href: '/creator', icon: Wand2 },
   { name: 'Items', href: '/items', icon: Shirt },
   { name: 'Cart', href: '/cart', icon: ShoppingCart },
   { name: 'Orders', href: '/orders', icon: ClipboardList },
@@ -45,7 +46,7 @@ export function LeftSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { data: session } = useSession() || {};
   
-  const isAdmin = session?.user?.role === 'ADMIN';
+  const isAdmin = !session || session?.user?.role === 'ADMIN';
   const navigation = isAdmin ? adminNavigation : userNavigation;
   const homeLink = isAdmin ? '/dashboard' : '/creator';
 

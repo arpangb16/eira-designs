@@ -69,18 +69,24 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
   const fetchSvgPreview = async (template: Template) => {
     if (!template?.svgPath || svgPreviews[template.id]) return
     try {
-      const response = await fetch('/api/upload/file-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cloud_storage_path: template.svgPath, isPublic: template.svgIsPublic ?? false }),
-      })
-      if (response.ok) {
+      // Public static paths (e.g. /creator/images/101.svg) are served by Next.js - no file-url API needed
+      const isPublicStaticPath = template.svgPath.startsWith('/creator/')
+      let svgUrl: string
+      if (isPublicStaticPath) {
+        svgUrl = template.svgPath.startsWith('http') ? template.svgPath : `${typeof window !== 'undefined' ? window.location.origin : ''}${template.svgPath}`
+      } else {
+        const response = await fetch('/api/upload/file-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cloud_storage_path: template.svgPath, isPublic: template.svgIsPublic ?? false }),
+        })
+        if (!response.ok) return
         const { url } = await response.json()
-        // Fetch the SVG content
-        const svgResponse = await fetch(url)
-        const svgContent = await svgResponse.text()
-        setSvgPreviews((prev) => ({ ...prev, [template.id]: svgContent }))
+        svgUrl = url
       }
+      const svgResponse = await fetch(svgUrl)
+      const svgContent = await svgResponse.text()
+      setSvgPreviews((prev) => ({ ...prev, [template.id]: svgContent }))
     } catch (error) {
       console.error('Failed to fetch SVG preview:', error)
     }

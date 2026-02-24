@@ -7,13 +7,11 @@ export const dynamic = 'force-dynamic'
 export default async function DashboardPage() {
   await requireAdmin();
 
-  // Fetch dashboard statistics
-  const [schoolsCount, teamsCount, projectsCount, itemsCount] = await Promise.all([
-    prisma.school.count(),
-    prisma.team.count(),
-    prisma.project.count(),
-    prisma.item.count(),
-  ])
+  // Fetch dashboard statistics (sequential to reduce connection pool pressure)
+  const schoolsCount = await prisma.school.count()
+  const teamsCount = await prisma.team.count()
+  const projectsCount = await prisma.project.count()
+  const itemsCount = await prisma.item.count()
 
   const stats = {
     schools: schoolsCount,
