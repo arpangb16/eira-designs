@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/get-session'
 import { parseSVG } from '@/lib/svg-parser-improved'
+import { JSDOM } from 'jsdom'
 
 export const dynamic = 'force-dynamic'
+
+// Parser uses global.JSDOM in Node; set it so parseSVG can run in API route
+if (typeof global !== 'undefined') {
+  (global as any).JSDOM = JSDOM
+}
 
 /**
  * Parse SVG content and extract layer information

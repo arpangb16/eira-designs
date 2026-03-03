@@ -125,20 +125,57 @@ export function parseSVG(svgContent: string): ParsedSVG {
   const height = parseFloat(svgElement.getAttribute('height') || '0')
   const viewBox = svgElement.getAttribute('viewBox') || undefined
   
-  // Find all top-level groups with IDs (these are typically named layers)
-  const topLevelGroups = Array.from(svgElement.children).filter(
-    child => child.tagName.toLowerCase() === 'g' && (child.id || child.getAttribute('data-name'))
+  // Find top-level groups that represent layers.
+  // 1) Prefer <g> with id or data-name (typical for named Illustrator layers).
+  // 2) If none found, use any top-level <g> (fallback for AI exports without ids).
+  // 3) If still none, and there is a single wrapper <g>, use its children as layers.
+  const allTopLevelGroups = Array.from(svgElement.children).filter(
+    child => child.tagName.toLowerCase() === 'g'
+  ) as Element[]
+  const namedGroups = allTopLevelGroups.filter(
+    g => g.id || g.getAttribute('data-name')
   )
-  
-  const layers: SVGLayer[] = []
-  
-  for (const group of topLevelGroups) {
+  let candidateGroups: Element[] = namedGroups.length > 0 ? namedGroups : allTopLevelGroups
+
+  if (candidateGroups.length === 0 && allTopLevelGroups.length === 1) {
+    const wrapper = allTopLevelGroups[0]
+    candidateGroups = Array.from(wrapper.children).filter(
+      child => child.tagName.toLowerCase() === 'g'
+    ) as Element[]
+  }
+
+  let layers: SVGLayer[] = []
+  for (let i = 0; i < candidateGroups.length; i++) {
+    const group = candidateGroups[i]
+    if (!group.id && !group.getAttribute('data-name')) {
+      group.setAttribute('data-name', `Layer_${i + 1}`)
+    }
     const layer = parseElement(group)
     if (layer) {
       layers.push(layer)
     }
   }
-  
+
+  // Last resort: if no layers found (e.g. flat SVG with no <g> structure), treat each
+  // direct drawable child of <svg> as a layer so the user still gets something to edit.
+  const drawableTags = new Set(['g', 'path', 'rect', 'circle', 'ellipse', 'text', 'image', 'polygon', 'polyline'])
+  const skipTags = new Set(['defs', 'style', 'title', 'metadata', 'script'])
+  if (layers.length === 0) {
+    const directChildren = Array.from(svgElement.children).filter(
+      child => {
+        const tag = child.tagName.toLowerCase()
+        return drawableTags.has(tag) && !skipTags.has(tag)
+      }
+    ) as Element[]
+    directChildren.forEach((el, i) => {
+      if (!el.id && !el.getAttribute('data-name')) {
+        el.setAttribute('data-name', `Layer_${i + 1}`)
+      }
+      const layer = parseElement(el)
+      if (layer) layers.push(layer)
+    })
+  }
+
   return {
     layers,
     width: width !== 0 ? width : undefined,

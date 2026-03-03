@@ -24,6 +24,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (cloud_storage_path.startsWith('uploads/') || cloud_storage_path.startsWith('/creator/')) {
+      const path = cloud_storage_path.startsWith('/') ? cloud_storage_path : `/${cloud_storage_path}`;
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      return NextResponse.json({ url: `${baseUrl}${path}` });
+    }
+
     const url = await getFileUrl(cloud_storage_path, isPublic ?? false)
     console.log('[FILE-URL] Generated URL successfully for:', cloud_storage_path)
 

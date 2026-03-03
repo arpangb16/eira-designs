@@ -87,9 +87,23 @@ export function FileUpload({
   }
 
   const singlePartUpload = async (file: File) => {
-    // Get presigned URL
-    console.log('[FileUpload] Requesting presigned URL for:', file.name)
-    const response = await fetch('/api/upload/presigned', {
+    // Try local first (laptop workflow), fall back to AWS (backup) if local fails
+    const formData = new FormData()
+    formData.append('file', file)
+    const localResponse = await fetch('/api/upload/local', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (localResponse.ok) {
+      const { cloud_storage_path } = await localResponse.json()
+      setProgress(100)
+      onUploadComplete(cloud_storage_path, true)
+      return
+    }
+
+    console.log('[FileUpload] Local upload failed, falling back to AWS S3')
+    const presignedResponse = await fetch('/api/upload/presigned', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -99,16 +113,13 @@ export function FileUpload({
       }),
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('[FileUpload] Failed to get upload URL:', errorData)
-      throw new Error(errorData.error || 'Failed to get upload URL')
+    if (!presignedResponse.ok) {
+      const errorData = await presignedResponse.json().catch(() => ({ error: 'Upload failed' }))
+      throw new Error(errorData.error || 'Failed to upload file')
     }
 
-    const { uploadUrl, cloud_storage_path } = await response.json()
-    console.log('[FileUpload] Got presigned URL, uploading to S3...')
-
-    // Upload file to S3
+    const { uploadUrl, cloud_storage_path } = await presignedResponse.json()
+    setProgress(50)
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
@@ -118,16 +129,28 @@ export function FileUpload({
     })
 
     if (!uploadResponse.ok) {
-      console.error('[FileUpload] S3 upload failed:', uploadResponse.status, uploadResponse.statusText)
-      throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`)
+      throw new Error(`Failed to upload to S3: ${uploadResponse.statusText}`)
     }
 
-    console.log('[FileUpload] Upload successful:', cloud_storage_path)
     setProgress(100)
     onUploadComplete(cloud_storage_path, isPublic)
   }
 
   const multipartUpload = async (file: File) => {
+    // Try local first for large files too, fall back to S3 multipart if local fails
+    const formData = new FormData()
+    formData.append('file', file)
+    const localResponse = await fetch('/api/upload/local', {
+      method: 'POST',
+      body: formData,
+    })
+    if (localResponse.ok) {
+      const { cloud_storage_path } = await localResponse.json()
+      setProgress(100)
+      onUploadComplete(cloud_storage_path, true)
+      return
+    }
+
     const CHUNK_SIZE = 100 * 1024 * 1024 // 100MB chunks
     const chunks = Math.ceil(file.size / CHUNK_SIZE)
 

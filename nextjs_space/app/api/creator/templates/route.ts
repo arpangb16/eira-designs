@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const dbTemplates = await prisma.template.findMany({
       where: { category: 'Creator' },
       orderBy: { createdAt: 'desc' },
-      select: { id, name, svgPath, svgIsPublic, filePath, fileIsPublic },
+      select: { id: true, name: true, svgPath: true, svgIsPublic: true, filePath: true, fileIsPublic: true },
     });
 
     const builtinPaths = new Set(BUILTIN_TEMPLATES.map((t) => t.svgPath));

@@ -236,8 +236,9 @@ export default function VisualEditorTab({
   const fetchSvgPreview = async () => {
     try {
       let svgUrl: string;
-      if (templateSvgPath.startsWith('/creator/')) {
-        svgUrl = typeof window !== 'undefined' ? `${window.location.origin}${templateSvgPath}` : templateSvgPath;
+      if (templateSvgPath.startsWith('/creator/') || templateSvgPath.startsWith('uploads/')) {
+        const p = templateSvgPath.startsWith('/') ? templateSvgPath : `/${templateSvgPath}`;
+        svgUrl = typeof window !== 'undefined' ? `${window.location.origin}${p}` : p;
       } else {
         const response = await fetch('/api/upload/file-url', {
           method: 'POST',
@@ -319,9 +320,33 @@ export default function VisualEditorTab({
         
         for (const element of Array.from(elements)) {
           if (config.layerType === 'text') {
-            // Update text content
-            if (element.tagName.toLowerCase() === 'text' || element.tagName.toLowerCase() === 'tspan') {
-              element.textContent = config.value;
+            // Escape for use inside SVG (avoid breaking XML or script injection)
+            const escaped = String(config.value)
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;');
+            // Circle Badge / text-on-path: update first tspan inside textPath so curve is preserved
+            const textPath = element.querySelector('textPath') ?? (element.tagName?.toLowerCase() === 'textpath' ? element : null);
+            if (textPath) {
+              const tspan = textPath.querySelector('tspan');
+              if (tspan) {
+                tspan.textContent = escaped;
+              } else {
+                textPath.textContent = escaped;
+              }
+            } else if (element.tagName?.toLowerCase() === 'text' || element.tagName?.toLowerCase() === 'tspan') {
+              element.textContent = escaped;
+            } else {
+              const textEl = element.querySelector('text');
+              const innerPath = textEl?.querySelector('textPath');
+              if (innerPath) {
+                const innerTspan = innerPath.querySelector('tspan');
+                if (innerTspan) innerTspan.textContent = escaped;
+                else innerPath.textContent = escaped;
+              } else if (textEl) {
+                textEl.textContent = escaped;
+              }
             }
           } else if (config.layerType === 'graphic') {
             // Update fill color for groups and their children

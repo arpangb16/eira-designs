@@ -69,11 +69,12 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
   const fetchSvgPreview = async (template: Template) => {
     if (!template?.svgPath || svgPreviews[template.id]) return
     try {
-      // Public static paths (e.g. /creator/images/101.svg) are served by Next.js - no file-url API needed
-      const isPublicStaticPath = template.svgPath.startsWith('/creator/')
+      // Public paths (/creator/, uploads/) are served by Next.js - no file-url API needed
+      const isPublicStaticPath = template.svgPath.startsWith('/creator/') || template.svgPath.startsWith('uploads/')
       let svgUrl: string
       if (isPublicStaticPath) {
-        svgUrl = template.svgPath.startsWith('http') ? template.svgPath : `${typeof window !== 'undefined' ? window.location.origin : ''}${template.svgPath}`
+        const p = template.svgPath.startsWith('/') ? template.svgPath : `/${template.svgPath}`;
+        svgUrl = template.svgPath.startsWith('http') ? template.svgPath : `${typeof window !== 'undefined' ? window.location.origin : ''}${p}`
       } else {
         const response = await fetch('/api/upload/file-url', {
           method: 'POST',
@@ -288,7 +289,7 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                   </div>
                   <div className="border-t pt-4">
                     <Label className="text-lg font-semibold">Files</Label>
-                    <p className="text-sm text-gray-500 mb-4">Upload the master .ai file (required) and an SVG file (optional) for layer preview</p>
+                    <p className="text-sm text-gray-500 mb-4">Upload the master .ai file (required). To see and edit layers, also upload an SVG exported from that file (File → Export → SVG). Layers are read from the SVG, not the .ai file.</p>
                     
                     <FileUpload 
                       label=".AI Template File (Required)" 
@@ -302,7 +303,7 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                     
                     <div className="mt-4">
                       <FileUpload 
-                        label="SVG Preview File (Optional - for layer editing)" 
+                        label="SVG Preview File (required for layers — export from .ai as SVG)" 
                         accept=".svg,image/svg+xml" 
                         isPublic={false} 
                         maxSize={50}

@@ -119,8 +119,9 @@ export function ItemDetailClient({
   const fetchSvgPreview = async (path: string, isPublic: boolean) => {
     try {
       let svgUrl: string
-      if (path.startsWith('/creator/')) {
-        svgUrl = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path
+      if (path.startsWith('/creator/') || path.startsWith('uploads/')) {
+        const p = path.startsWith('/') ? path : `/${path}`;
+        svgUrl = typeof window !== 'undefined' ? `${window.location.origin}${p}` : p
       } else {
         const response = await fetch('/api/upload/file-url', {
           method: 'POST',
