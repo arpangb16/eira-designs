@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EiRA — Handcrafted Accessories</title>
+    <meta name="description" content="Handcrafted quilted bags made by women artisans in India. A portion of profits supports animal welfare initiatives.">
+    <meta property="og:title" content="EiRA — Handcrafted Accessories">
+    <meta property="og:description" content="Handcrafted quilted bags made by women artisans in India.">
+    <meta property="og:image" content="website/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="EiRA — Handcrafted Accessories">
+    <meta name="twitter:description" content="Handcrafted quilted bags made by women artisans in India.">
+    <link rel="icon" href="website/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="website/style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <img src="website/eira-logo.png" alt="EiRA – Handcrafted Bags" width="100" height="40">
+            </a>
+            <nav class="nav-desktop">
+                <a href="shop.html">Shop</a>
+                <a href="about.html">About</a>
+                <a href="mission.html">Mission</a>
+                <a href="contact.html">Contact</a>
+            </nav>
+            <button class="mobile-menu-btn" aria-label="Open menu" onclick="document.getElementById('mobileMenu').classList.toggle('open')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" x2="20" y1="12" y2="12"></line>
+                    <line x1="4" x2="20" y1="6" y2="6"></line>
+                    <line x1="4" x2="20" y1="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div id="mobileMenu" class="mobile-menu">
+            <a href="shop.html">Shop</a>
+            <a href="about.html">About</a>
+            <a href="mission.html">Mission</a>
+            <a href="contact.html">Contact</a>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero" style="background-image: url('website/hero-bg.png');">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <p class="hero-subtitle">Made in India</p>
+            <a href="shop.html" class="btn btn-white">
+                Shop the Collection
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+            </a>
+        </div>
+    </section>
+
+    <!-- Collection -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header fade-up">
+                <h2>Our Collection</h2>
+            </div>
+            <div class="product-grid">
+                <div class="product-card fade-up fade-up-delay-1">
+                    <a href="shop.html">
+                        <div class="product-image-wrap">
+                            <img src="website/products/blue-floral-tote.png" alt="Blue Floral Tote" loading="lazy">
+                        </div>
+                    </a>
+                    <a href="shop.html" class="product-info">
+                        <h3>Blue Floral Tote</h3>
+                        <p class="product-category">Totes</p>
+                        <p class="product-price">$30.00</p>
+                    </a>
+                </div>
+                <div class="product-card fade-up fade-up-delay-2">
+                    <a href="shop.html">
+                        <div class="product-image-wrap">
+                            <img src="website/products/pink-ruffle-floral-tote.jpeg" alt="Pink Ruffle Floral Tote" loading="lazy">
+                        </div>
+                    </a>
+                    <a href="shop.html" class="product-info">
+                        <h3>Pink Ruffle Floral Tote</h3>
+                        <p class="product-category">Totes</p>
+                        <p class="product-price">$30.00</p>
+                    </a>
+                </div>
+                <div class="product-card fade-up fade-up-delay-3">
+                    <a href="shop.html">
+                        <div class="product-image-wrap">
+                            <img src="website/products/floral-cosmetic-bag.png" alt="Floral Cosmetic Bag" loading="lazy">
+                        </div>
+                    </a>
+                    <a href="shop.html" class="product-info">
+                        <h3>Floral Cosmetic Bag</h3>
+                        <p class="product-category">Cosmetic Bags</p>
+                        <p class="product-price">$20.00</p>
+                    </a>
+                </div>
+            </div>
+            <div class="text-center" style="margin-top: 2.5rem;">
+                <a href="shop.html" class="btn btn-dark">View All Products</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- About + Mission -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="two-col">
+                <div class="two-col-item fade-up">
+                    <img src="website/founders.jpg" alt="Ashwini Sidwani and her daughter, the founders of EiRA" class="about-image" loading="lazy">
+                </div>
+                <div class="two-col-item fade-up fade-up-delay-2">
+                    <h2>About EiRA</h2>
+                    <p>EiRA began as a small idea between a mother and daughter. Born from a shared love of art, storytelling, and thoughtful design, it brings together creativity and pieces made with care and intention. That warmth is at the heart of everything we create.</p>
+                    <a href="about.html" class="btn btn-dark">
+                        Read More
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="mission-block text-center fade-up">
+                <h2>Our Mission</h2>
+                <p style="max-width: 640px; margin: 0 auto 2rem;">At EiRA, we believe that every purchase can make a difference. A portion of every sale goes directly to animal welfare initiatives, helping rescue and care for animals in need.</p>
+                <a href="mission.html" class="btn btn-dark">
+                    Read More
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <img src="website/eira-logo.png" alt="EiRA" width="80" height="32" class="footer-logo">
+                    <p>Thoughtful pieces, created with care.</p>
+                </div>
+                <div class="footer-links-wrap">
+                    <div class="footer-col">
+                        <h4>Quick Links</h4>
+                        <a href="shop.html">Shop</a>
+                        <a href="about.html">About</a>
+                        <a href="mission.html">Mission</a>
+                        <a href="contact.html">Contact</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Connect</h4>
+                        <a href="https://www.instagram.com/house__of__eira" target="_blank" rel="noopener noreferrer">Instagram</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 EiRA. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="website/main.js"></script>
+</body>
+</html>
+
