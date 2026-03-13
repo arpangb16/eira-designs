@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact — EiRA</title>
+    <meta name="description" content="Get in touch with EiRA. We'd love to hear from you.">
+    <link rel="icon" href="website/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="website/style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <img src="website/eira-logo.png" alt="EiRA – Handcrafted Bags" width="100" height="40">
+            </a>
+            <nav class="nav-desktop">
+                <a href="shop.html">Shop</a>
+                <a href="about.html">About</a>
+                <a href="mission.html">Mission</a>
+                <a href="contact.html">Contact</a>
+            </nav>
+            <button class="mobile-menu-btn" aria-label="Open menu" onclick="document.getElementById('mobileMenu').classList.toggle('open')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div id="mobileMenu" class="mobile-menu">
+            <a href="shop.html">Shop</a>
+            <a href="about.html">About</a>
+            <a href="mission.html">Mission</a>
+            <a href="contact.html">Contact</a>
+        </div>
+    </header>
+
+    <section class="page-hero">
+        <div class="container">
+            <p class="hero-subtitle">Get in Touch</p>
+            <h1>Contact Us</h1>
+            <p style="max-width: 500px; margin: 0.75rem auto 0;">Have a question or just want to say hello? We'd love to hear from you.</p>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="contact-grid">
+                <form class="contact-form fade-up" action="https://formsubmit.co/houseofeira@gmail.com" method="POST">
+                    <input type="hidden" name="_subject" value="New message from EiRA website">
+                    <input type="hidden" name="_captcha" value="false">
+                    <input type="hidden" name="_next" value="https://arpangb16.github.io/eira-designs/contact.html?sent=true">
+                    <input type="text" name="_honey" style="display:none">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" required placeholder="Your name">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" required placeholder="How can we help?"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-dark">Send Message</button>
+                    <p class="form-note">Your information is stored securely and will only be used to respond to your inquiry.</p>
+                </form>
+
+                <div class="fade-up fade-up-delay-2">
+                    <div class="contact-info-card">
+                        <h3>Email</h3>
+                        <p><a href="mailto:houseofeira@gmail.com">houseofeira@gmail.com</a></p>
+                    </div>
+                    <div class="contact-info-card">
+                        <h3>Instagram</h3>
+                        <p><a href="https://www.instagram.com/house__of__eira" target="_blank" rel="noopener noreferrer">@house__of__eira</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <img src="website/eira-logo.png" alt="EiRA" width="80" height="32" class="footer-logo">
+                    <p>Thoughtful pieces, created with care.</p>
+                </div>
+                <div class="footer-links-wrap">
+                    <div class="footer-col">
+                        <h4>Quick Links</h4>
+                        <a href="shop.html">Shop</a>
+                        <a href="about.html">About</a>
+                        <a href="mission.html">Mission</a>
+                        <a href="contact.html">Contact</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Connect</h4>
+                        <a href="https://www.instagram.com/house__of__eira" target="_blank" rel="noopener noreferrer">Instagram</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 EiRA. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="website/main.js"></script>
+    <script>
+    if (window.location.search.includes('sent=true')) {
+        var form = document.querySelector('.contact-form');
+        form.innerHTML = '<div class="form-success"><h3>Message Sent!</h3><p>Thank you for reaching out. We\'ll get back to you soon.</p></div>';
+    }
+    </script>
+</body>
+</html>
